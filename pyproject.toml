@@ -1,0 +1,22 @@
+[project]
+name = "scromfyUI_Shaders"
+version = "0.1.0"
+description = "Shaders nodes for ComfyUI"
+authors = [
+    { name = "scruffynerf" }
+]
+dependencies = [
+    "torch",
+    "moderngl",
+    "numpy",
+    "Pillow",
+]
+readme = "README.md"
+keywords = ["comfyui", "custom-nodes", "shaders"]
+
+[project.urls]
+Repository = "https://github.com/scruffynerf/scromfyUI-Shaders"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

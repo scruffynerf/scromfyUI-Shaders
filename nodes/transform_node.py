@@ -62,7 +62,7 @@ class ShaderTransform:
         context.uniforms["rotate"] = float(rotate) * math.pi / 180.0
         context.uniforms["tile"] = tuple(tile)
         
-        return (context, result)
+        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderTransform": ShaderTransform,

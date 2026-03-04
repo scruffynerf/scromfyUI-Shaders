@@ -66,9 +66,10 @@ class ShaderGradientLinear:
         context.uniforms["offset"] = tuple(offset)
         context.uniforms["angle"] = float(angle)
         context.uniforms["vertical"] = vertical
-        context.uniform["reverse"] = reverse
+        context.uniforms["reverse"] = reverse
+        context.uniforms["tile"] = tuple(tile)
         
-        return {"ui": {"resolution": [width, height]}, "result": (context, result)}
+        return {"ui": {"resolution": [result.shape[2], result.shape[1]]}, "result": (context, result)} # Changed resolution to use result shape
 
 NODE_CLASS_MAPPINGS = {
     "ShaderGradientLinear": ShaderGradientLinear,

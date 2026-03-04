@@ -11,7 +11,7 @@ class ShaderUniformColor:
                 "b": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
             },
             "optional": {
-                "color (vec3)": ("VEC3COLOR",),
+                "color (vec3)": ("COLOR",),
                 "context": ("GLSL_CONTEXT",),
             }
         }
@@ -26,7 +26,8 @@ class ShaderUniformColor:
         r = kwargs.get("r", 1.0)
         g = kwargs.get("g", 1.0)
         b = kwargs.get("b", 1.0)
-        color = kwargs.get("color (vec3)")
+        a = kwargs.get("a", 1.0)
+        color = kwargs.get("color (vec4)")
         context = kwargs.get("context")
         
         if context is None:

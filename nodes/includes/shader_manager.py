@@ -101,7 +101,25 @@ class ShaderContext:
         return sorted(list(set(buffers))), sorted(list(set(double_buffers)))
 
     def render(self, fragment_source, width, height, vertex_source=None, base_path=None):
-        # 0. Inject Preamble for standard uniforms
+        # 0. Resolve includes first to see what's really in there
+        fragment_source = self.resolve_includes(fragment_source, base_path)
+
+        # 1. Strip existing #version if present to re-inject properly
+        version_line = "#version 330"
+        precision_line = "precision highp float;"
+        
+        # Check if version exists
+        v_match = re.search(r'#version\s+\d+\b.*', fragment_source)
+        if v_match:
+            version_line = v_match.group(0)
+            fragment_source = fragment_source[:v_match.start()] + fragment_source[v_match.end():]
+            
+        # Check if precision exists
+        p_match = re.search(r'precision\s+\w+\s+float;', fragment_source)
+        if p_match:
+            precision_line = p_match.group(0)
+            fragment_source = fragment_source[:p_match.start()] + fragment_source[p_match.end():]
+
         preamble = """
             uniform float iTime;
             uniform float u_time;
@@ -109,22 +127,17 @@ class ShaderContext:
             uniform vec3 u_resolution;
             uniform vec4 iMouse;
         """
-        
-        # Ensure version tag and precision
-        if not re.search(r'#version\s+\d+\b', fragment_source):
-            fragment_source = "#version 330\nprecision highp float;\n" + fragment_source
-            
-        # Insert preamble after #version if present, else at top
-        version_match = re.search(r'#version\s+\d+\b.*', fragment_source)
-        if version_match:
-            end_pos = version_match.end()
-            fragment_source = fragment_source[:end_pos] + preamble + fragment_source[end_pos:]
-        else:
-            # Should not happen now but kept for safety
-            fragment_source = preamble + fragment_source
 
-        # Resolve includes
-        fragment_source = self.resolve_includes(fragment_source, base_path)
+        # Shadertoy wrapper if main() is missing but mainImage is present
+        wrapper_top = ""
+        wrapper_bottom = ""
+        if "void main()" not in fragment_source and "void mainImage" in fragment_source:
+            wrapper_top = "out vec4 fragColor;\n"
+            wrapper_bottom = "\nvoid main() { mainImage(fragColor, gl_FragCoord.xy); }\n"
+
+        def assemble_shader(defines=""):
+            return f"{version_line}\n{precision_line}\n{defines}\n{preamble}\n{wrapper_top}\n{fragment_source}\n{wrapper_bottom}"
+
         if vertex_source is None:
             vertex_source = """
                 #version 330
@@ -186,7 +199,8 @@ class ShaderContext:
 
         # 3. Render each BUFFER_N
         for b_idx in buffers_n:
-            pass_src = f"#define BUFFER_{b_idx}\n" + fragment_source
+            defines = f"#define BUFFER_{b_idx}"
+            pass_src = assemble_shader(defines)
             tex = self.ctx.texture((width, height), 4, dtype='f4')
             fbo = self.ctx.framebuffer(color_attachments=[tex])
             run_pass(pass_src, fbo)
@@ -194,9 +208,10 @@ class ShaderContext:
             fbo.release()
 
         # 4. Main pass
+        main_src = assemble_shader()
         main_tex = self.ctx.texture((width, height), 4, dtype='f4')
         main_fbo = self.ctx.framebuffer(color_attachments=[main_tex])
-        run_pass(fragment_source, main_fbo)
+        run_pass(main_src, main_fbo)
 
         # 5. Read back
         data = main_fbo.read(components=4, dtype='f4')
@@ -211,8 +226,6 @@ class ShaderContext:
         
         # Clear transient textures
         for tex in self.textures.values():
-            # Only release if it's not a persistent buffer
-            # For now, release all
             tex.release()
         self.textures.clear()
         

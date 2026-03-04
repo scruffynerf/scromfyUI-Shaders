@@ -24,10 +24,10 @@ class ShaderUniformVec4Color:
 
     def append(self, **kwargs):
         name = kwargs.get("name")
-        r = kwargs.get("r (vec4)", 1.0)
-        g = kwargs.get("g (vec4)", 1.0)
-        b = kwargs.get("b (vec4)", 1.0)
-        a = kwargs.get("a (vec4)", 1.0)
+        r = kwargs.get("r", 1.0)
+        g = kwargs.get("g", 1.0)
+        b = kwargs.get("b", 1.0)
+        a = kwargs.get("a", 1.0)
         color = kwargs.get("color (vec4)")
         context = kwargs.get("context")
         

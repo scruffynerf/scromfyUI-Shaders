@@ -36,54 +36,27 @@ class ShaderRunner:
         for name, tex in context.textures.items():
             ctx.set_texture(name, tex)
 
-        # Standard uniforms
-        ctx.set_uniform("iResolution", (float(width), float(height), 0.0))
-        ctx.set_uniform("iTime", 0.0)
-        ctx.set_uniform("iFrame", 0)
-
-        # Basic Shadertoy wrapper logic
-        full_source = f"""
-        #version 330
-        precision highp float;
-        uniform vec3 iResolution;
-        uniform float iTime;
-        uniform int iFrame;
-        
-        // Dynamic uniforms from context
-        """
-        
-        # Add uniform declarations from context
+        # Dynamic uniforms from context declarations
+        dynamic_declarations = ""
         for name, val in context.uniforms.items():
             if isinstance(val, (float, int)):
                 if name.startswith("b_") or name in ["vertical", "reverse"]: # Heuristic for bools
-                    full_source += f"uniform bool {name};\n"
+                    dynamic_declarations += f"uniform bool {name};\n"
                 else:
-                    full_source += f"uniform float {name};\n"
+                    dynamic_declarations += f"uniform float {name};\n"
             elif isinstance(val, (tuple, list)):
                 if len(val) == 2:
-                    full_source += f"uniform vec2 {name};\n"
+                    dynamic_declarations += f"uniform vec2 {name};\n"
                 elif len(val) == 3:
-                    full_source += f"uniform vec3 {name};\n"
+                    dynamic_declarations += f"uniform vec3 {name};\n"
                 elif len(val) == 4:
-                    full_source += f"uniform vec4 {name};\n"
+                    dynamic_declarations += f"uniform vec4 {name};\n"
         
         for name in context.textures.keys():
-            full_source += f"uniform sampler2D {name};\n"
+            dynamic_declarations += f"uniform sampler2D {name};\n"
 
-        full_source += "\n" + fragment_code + "\n"
+        full_source = dynamic_declarations + "\n" + fragment_code
         
-        # Add main() if only mainImage is provided
-        if "void main()" not in full_source:
-            full_source += """
-            out vec4 finalColor;
-            void main() {
-                mainImage(finalColor, gl_FragCoord.xy);
-            }
-            """
-
-        # Resolve includes (lygia, etc.)
-        full_source = ctx.resolve_includes(full_source)
-
         result = ctx.render(full_source, width, height)
         # result is (1, H, W, 4)
         

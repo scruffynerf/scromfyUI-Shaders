@@ -105,6 +105,10 @@ class Vec4ColorWidget {
         this.activeIdx = -1;
     }
 
+    computeSize() {
+        return [200, 100];
+    }
+
     draw(ctx, node, widgetWidth, widgetY) {
         this.wY = widgetY;
         this.wWidth = widgetWidth;
@@ -148,8 +152,8 @@ class Vec4ColorWidget {
     mouse(e, pos, node) {
         if (e.type === 'pointerdown' || (e.type === 'pointermove' && this.activeIdx !== -1)) {
             const relX = pos[0] - 10;
-            const relY = pos[1] - this.wY - 5;
-            const sliderWidth = (this.wWidth || 200) - 60;
+            const relY = pos[1] - (this.wY || 0) - 5;
+            const sliderWidth = (this.wWidth || node.size[0]) - 60;
 
             if (e.type === 'pointerdown') {
                 this.activeIdx = Math.floor(relY / 22);
@@ -169,83 +173,7 @@ class Vec4ColorWidget {
             this.activeIdx = -1;
             return true;
         }
-    }
-
-    serializeValue() {
-        return this.value.map(v => v.toFixed(3)).join(",");
-    }
-}
-
-class Vec3ColorWidget {
-    constructor(...args) {
-        const [inputName, opts] = args;
-        this.name = inputName || 'Vec3Color';
-        this.type = 'VEC3COLOR';
-        this.value = [1.0, 1.0, 1.0];
-        this.size = [200, 80];
-        this.activeIdx = -1;
-    }
-
-    draw(ctx, node, widgetWidth, widgetY) {
-        this.wY = widgetY;
-        this.wWidth = widgetWidth;
-        this.wHeight = 80;
-
-        const labels = ['R', 'G', 'B'];
-        const colors = ['#f55', '#5f5', '#55f'];
-
-        ctx.save();
-        ctx.translate(0, this.wY);
-
-        const r = Math.round(this.value[0] * 255);
-        const g = Math.round(this.value[1] * 255);
-        const b = Math.round(this.value[2] * 255);
-
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(widgetWidth - 40, 0, 30, 30);
-        ctx.strokeStyle = '#fff';
-        ctx.strokeRect(widgetWidth - 40, 0, 30, 30);
-
-        for (let i = 0; i < 3; i++) {
-            const y = 5 + i * 22;
-            const val = this.value[i];
-            ctx.fillStyle = '#222';
-            ctx.fillRect(10, y, widgetWidth - 60, 15);
-            ctx.fillStyle = colors[i];
-            ctx.fillRect(10, y, (widgetWidth - 60) * val, 15);
-            ctx.fillStyle = '#fff';
-            ctx.textAlign = 'left';
-            ctx.fillText(labels[i], 0, y + 12);
-            ctx.textAlign = 'right';
-            ctx.fillText(val.toFixed(2), widgetWidth - 55, y + 12);
-        }
-        ctx.restore();
-    }
-
-    mouse(e, pos, node) {
-        if (e.type === 'pointerdown' || (e.type === 'pointermove' && this.activeIdx !== -1)) {
-            const relX = pos[0] - 10;
-            const relY = pos[1] - this.wY - 5;
-            const sliderWidth = (this.wWidth || 200) - 60;
-
-            if (e.type === 'pointerdown') {
-                this.activeIdx = Math.floor(relY / 22);
-                if (this.activeIdx < 0 || this.activeIdx > 2) {
-                    this.activeIdx = -1;
-                    return false;
-                }
-            }
-
-            if (this.activeIdx !== -1) {
-                const val = Math.max(0, Math.min(1, relX / sliderWidth));
-                this.value[this.activeIdx] = val;
-                node.setDirtyCanvas(true, true);
-                return true;
-            }
-        } else if (e.type === 'pointerup') {
-            this.activeIdx = -1;
-            return true;
-        }
+        return false;
     }
 
     serializeValue() {
@@ -403,13 +331,6 @@ app.registerExtension({
                     widget: node.addCustomWidget(new Vec3PosWidget(inputName, inputData)),
                     minWidth: 200,
                     minHeight: 180,
-                }
-            },
-            VEC3COLOR: (node, inputName, inputData) => {
-                return {
-                    widget: node.addCustomWidget(new Vec3ColorWidget(inputName, inputData)),
-                    minWidth: 200,
-                    minHeight: 80,
                 }
             },
             VEC4COLOR: (node, inputName, inputData) => {

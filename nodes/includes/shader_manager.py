@@ -60,17 +60,21 @@ class ShaderContext:
                     full_path = candidate
                     break
             
-            if full_path and full_path not in self.processed_includes:
+            if full_path:
+                if full_path in self.processed_includes:
+                    return f"// {include_path} already included"
+                
                 self.processed_includes.add(full_path)
                 try:
                     with open(full_path, 'r') as f:
                         content = f.read()
-                    return self.resolve_includes(content, os.path.dirname(full_path))
+                    # Prepend a marker for debugging
+                    return f"// BEGIN {include_path}\n" + self.resolve_includes(content, os.path.dirname(full_path)) + f"\n// END {include_path}"
                 except Exception as e:
                     return f"// ERROR: Failed to read {include_path}: {str(e)}"
-            return f"// ERROR: Could not find or already processed {include_path}"
+            return f"// ERROR: Could not find {include_path}"
 
-        # Support both #include "file" and #include file (some shaders use the latter)
+        # Support both #include "file" and #include file
         return re.sub(r'#include\s+["<]?([^"\s>]+)[">]?', replace_include, source)
 
     def set_texture(self, name, tensor):

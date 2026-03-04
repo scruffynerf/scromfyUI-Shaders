@@ -63,7 +63,7 @@ class ShaderRunner:
         image = result[:, :, :, :3]
         mask = result[:, :, :, 3]
         
-        return {"ui": {"resolution": [width, height]}, "result": (context, image, mask)}
+        return (context, image, mask)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderRunner": ShaderRunner,

@@ -58,7 +58,7 @@ class ShaderBloom:
         context.uniforms["intensity"] = float(intensity)
         context.uniforms["blurSize"] = float(blur_size)
 
-        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderBloom": ShaderBloom,

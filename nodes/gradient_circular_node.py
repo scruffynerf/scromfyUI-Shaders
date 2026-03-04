@@ -64,7 +64,7 @@ class ShaderGradientCircular:
         context.uniforms["radius"] = float(radius)
         context.uniforms["reverse"] = reverse
         
-        return {"ui": {"resolution": [width, height]}, "result": (context, result)}
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderGradientCircular": ShaderGradientCircular,

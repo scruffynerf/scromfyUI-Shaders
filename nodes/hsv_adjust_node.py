@@ -54,7 +54,7 @@ class ShaderHSVAdjust:
         # Update context
         context.uniforms["HSV"] = (float(hue), float(saturation), float(value))
 
-        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderHSVAdjust": ShaderHSVAdjust,

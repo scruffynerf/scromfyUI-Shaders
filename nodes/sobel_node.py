@@ -42,7 +42,7 @@ class ShaderSobel:
         result = ctx.render(shader_code, image.shape[2], image.shape[1], base_path=os.path.dirname(shader_path))
         
         # Update context (though Sobel doesn't add uniforms, it might be part of a chain)
-        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderSobel": ShaderSobel,

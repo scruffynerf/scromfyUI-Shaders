@@ -11,7 +11,7 @@ class ShaderUniformColor:
                 "b": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
             },
             "optional": {
-                "color (vec3)": ("COLOR",),
+                "color": ("VEC3", {"default": [1.0, 1.0, 1.0]}),
                 "context": ("GLSL_CONTEXT",),
             }
         }

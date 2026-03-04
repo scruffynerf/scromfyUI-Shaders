@@ -57,7 +57,7 @@ class ShaderNormalMap:
         context.uniforms["detail"] = float(detail)
         context.uniforms["flip"] = flip
         
-        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderNormalMap": ShaderNormalMap,

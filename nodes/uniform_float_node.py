@@ -13,8 +13,8 @@ class ShaderUniformFloat:
             }
         }
 
-    RETURN_TYPES = ("FLOAT", "GLSL_CONTEXT")
-    RETURN_NAMES = ("float", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "FLOAT")
+    RETURN_NAMES = ("context", "float")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
@@ -22,7 +22,7 @@ class ShaderUniformFloat:
         if context is None:
             context = GLSLContext()
         context.uniforms[name] = float(value)
-        return (float(value), context)
+        return (context, float(value))
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformFloat": ShaderUniformFloat,

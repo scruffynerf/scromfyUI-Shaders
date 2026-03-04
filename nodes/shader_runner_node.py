@@ -15,19 +15,22 @@ class ShaderRunner:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE", "MASK")
+    RETURN_NAMES = ("context", "image", "mask")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders"
 
     def render(self, fragment_code, width, height, context=None):
+        if context is None:
+            context = GLSLContext()
+
         ctx = ShaderContext()
         
-        # Apply context
-        if context:
-            for name, val in context.uniforms.items():
-                ctx.set_uniform(name, val)
-            for name, tex in context.textures.items():
-                ctx.set_texture(name, tex)
+        # Apply context uniforms/textures to the renderer
+        for name, val in context.uniforms.items():
+            ctx.set_uniform(name, val)
+        for name, tex in context.textures.items():
+            ctx.set_texture(name, tex)
 
         # Standard uniforms
         ctx.set_uniform("iResolution", (float(width), float(height), 0.0))
@@ -46,23 +49,22 @@ class ShaderRunner:
         """
         
         # Add uniform declarations from context
-        if context:
-            for name, val in context.uniforms.items():
-                if isinstance(val, (float, int)):
-                    if name.startswith("b_") or name in ["vertical", "reverse"]: # Heuristic for bools
-                        full_source += f"uniform bool {name};\n"
-                    else:
-                        full_source += f"uniform float {name};\n"
-                elif isinstance(val, (tuple, list)):
-                    if len(val) == 2:
-                        full_source += f"uniform vec2 {name};\n"
-                    elif len(val) == 3:
-                        full_source += f"uniform vec3 {name};\n"
-                    elif len(val) == 4:
-                        full_source += f"uniform vec4 {name};\n"
-            
-            for name in context.textures.keys():
-                full_source += f"uniform sampler2D {name};\n"
+        for name, val in context.uniforms.items():
+            if isinstance(val, (float, int)):
+                if name.startswith("b_") or name in ["vertical", "reverse"]: # Heuristic for bools
+                    full_source += f"uniform bool {name};\n"
+                else:
+                    full_source += f"uniform float {name};\n"
+            elif isinstance(val, (tuple, list)):
+                if len(val) == 2:
+                    full_source += f"uniform vec2 {name};\n"
+                elif len(val) == 3:
+                    full_source += f"uniform vec3 {name};\n"
+                elif len(val) == 4:
+                    full_source += f"uniform vec4 {name};\n"
+        
+        for name in context.textures.keys():
+            full_source += f"uniform sampler2D {name};\n"
 
         full_source += "\n" + fragment_code + "\n"
         
@@ -84,7 +86,7 @@ class ShaderRunner:
         image = result[:, :, :, :3]
         mask = result[:, :, :, 3]
         
-        return (image, mask)
+        return {"ui": {"resolution": [width, height]}, "result": (context, image, mask)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderRunner": ShaderRunner,

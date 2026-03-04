@@ -6,26 +6,34 @@ class ShaderUniformColor:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_color"}),
-                "r": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "g": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "b": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "color (vec3)": ("COLOR", {"default": [1.0, 1.0, 1.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("VEC3", "GLSL_CONTEXT")
-    RETURN_NAMES = ("color", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "VEC3")
+    RETURN_NAMES = ("context", "color")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
-    def append(self, name, r, g, b, context=None):
+    def append(self, **kwargs):
+        name = kwargs.get("name")
+        color = kwargs.get("color (vec3)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
-        val = (float(r), float(g), float(b))
+        
+        # Handle string input from custom widget (if any) or tuple from other nodes
+        if isinstance(color, str):
+            coords = [float(x) for x in color.split(",")]
+        else:
+            coords = [float(x) for x in color]
+            
+        val = (coords[0], coords[1], coords[2])
         context.uniforms[name] = val
-        return (val, context)
+        return (context, val)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformColor": ShaderUniformColor,

@@ -6,26 +6,26 @@ class ShaderUniformVec3:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_vec3"}),
-                "x": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "y": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "z": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "value (vec3)": ("VEC3", {"default": [0.0, 0.0, 0.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("VEC3", "GLSL_CONTEXT")
-    RETURN_NAMES = ("vec3", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "VEC3")
+    RETURN_NAMES = ("context", "vec3")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
-    def append(self, name, x, y, z, context=None):
+    def append(self, **kwargs):
+        name = kwargs.get("name")
+        val = kwargs.get("value (vec3)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
-        val = (float(x), float(y), float(z))
         context.uniforms[name] = val
-        return (val, context)
+        return (context, val)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformVec3": ShaderUniformVec3,

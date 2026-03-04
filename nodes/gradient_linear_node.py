@@ -8,8 +8,10 @@ class ShaderGradientLinear:
             "required": {
                 "width": ("INT", {"default": 512, "min": 64, "max": 4096}),
                 "height": ("INT", {"default": 512, "min": 64, "max": 4096}),
-                "start_color": ("VEC4", {"default": [0.0, 0.0, 0.0, 1.0]}),
-                "end_color": ("VEC4", {"default": [1.0, 1.0, 1.0, 1.0]}),
+                "start_color (vec4)": ("VEC4", {"default": [0.0, 0.0, 0.0, 1.0]}),
+                "end_color (vec4)": ("VEC4", {"default": [1.0, 1.0, 1.0, 1.0]}),
+                "offset (vec2)": ("VEC2", {"default": [0.0, 0.0]}),
+                "angle": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 360.0, "step": 0.01}),
                 "vertical": ("BOOLEAN", {"default": False}),
                 "reverse": ("BOOLEAN", {"default": False}),
             },
@@ -18,12 +20,21 @@ class ShaderGradientLinear:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Create"
 
-    def render(self, width, height, start_color, end_color, vertical, reverse, context=None):
+    def render(self, **kwargs):
+        width = kwargs.get("width")
+        height = kwargs.get("height")
+        start_color = kwargs.get("start_color (vec4)")
+        end_color = kwargs.get("end_color (vec4)")
+        offset = kwargs.get("offset (vec2)")
+        angle = kwargs.get("angle")
+        vertical = kwargs.get("vertical")
+        reverse = kwargs.get("reverse")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             
@@ -42,6 +53,8 @@ class ShaderGradientLinear:
         # Shader specific uniforms
         ctx.uniforms["start"] = tuple(start_color)
         ctx.uniforms["end"] = tuple(end_color)
+        ctx.uniforms["offset"] = tuple(offset)
+        ctx.uniforms["angle"] = float(angle)
         ctx.uniforms["vertical"] = vertical
         ctx.uniforms["reverse"] = reverse
             
@@ -50,10 +63,12 @@ class ShaderGradientLinear:
         # Update context
         context.uniforms["start"] = tuple(start_color)
         context.uniforms["end"] = tuple(end_color)
+        context.uniforms["offset"] = tuple(offset)
+        context.uniforms["angle"] = float(angle)
         context.uniforms["vertical"] = vertical
-        context.uniforms["reverse"] = reverse
+        context.uniform["reverse"] = reverse
         
-        return (result, context)
+        return {"ui": {"resolution": [width, height]}, "result": (context, result)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderGradientLinear": ShaderGradientLinear,

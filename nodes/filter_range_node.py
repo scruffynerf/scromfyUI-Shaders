@@ -7,20 +7,24 @@ class ShaderFilterRange:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "start": ("VEC3", {"default": [0.0, 0.0, 0.0]}),
-                "end": ("VEC3", {"default": [1.0, 1.0, 1.0]}),
+                "start (vec3)": ("VEC3", {"default": [0.0, 0.0, 0.0]}),
+                "end (vec3)": ("VEC3", {"default": [1.0, 1.0, 1.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Filter"
 
-    def render(self, image, start, end, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        start = kwargs.get("start (vec3)")
+        end = kwargs.get("end (vec3)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             
@@ -49,7 +53,7 @@ class ShaderFilterRange:
         context.uniforms["start"] = tuple(start)
         context.uniforms["end"] = tuple(end)
         
-        return (result, context)
+        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderFilterRange": ShaderFilterRange,

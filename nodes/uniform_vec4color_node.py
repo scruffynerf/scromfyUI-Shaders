@@ -5,20 +5,23 @@ class ShaderUniformVec4Color:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "name": ("STRING", {"default": "u_color4"}),
-                "color": ("VEC4COLOR", {"default": "1.0,1.0,1.0,1.0"}),
+                "name": ("STRING", {"default": "u_color"}),
+                "color (vec4)": ("VEC4COLOR", {"default": [1.0, 1.0, 1.0, 1.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("VEC4", "GLSL_CONTEXT")
-    RETURN_NAMES = ("vec4", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "VEC4")
+    RETURN_NAMES = ("context", "vec4")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
-    def append(self, name, color, context=None):
+    def append(self, **kwargs):
+        name = kwargs.get("name")
+        color = kwargs.get("color (vec4)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
         
@@ -30,7 +33,7 @@ class ShaderUniformVec4Color:
             
         val = (channels[0], channels[1], channels[2], channels[3])
         context.uniforms[name] = val
-        return (val, context)
+        return (context, val)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformVec4Color": ShaderUniformVec4Color,

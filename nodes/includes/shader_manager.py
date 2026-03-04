@@ -91,7 +91,7 @@ class ShaderContext:
 
         # ModernGL expects H, W, C
         h, w, c = img_data.shape
-        texture = self.ctx.texture((w, h), c, data=img_data.astype('f4').tobytes())
+        texture = self.ctx.texture((w, h), c, data=img_data.astype('f4').tobytes(), dtype='f4')
         self.textures[name] = texture
 
     def _get_buffer_definitions(self, source):
@@ -101,6 +101,23 @@ class ShaderContext:
         return sorted(list(set(buffers))), sorted(list(set(double_buffers)))
 
     def render(self, fragment_source, width, height, vertex_source=None, base_path=None):
+        # 0. Inject Preamble for standard uniforms
+        preamble = """
+            uniform float iTime;
+            uniform float u_time;
+            uniform vec3 iResolution;
+            uniform vec3 u_resolution;
+            uniform vec4 iMouse;
+        """
+        
+        # Insert preamble after #version if present, else at top
+        version_match = re.search(r'#version\s+\d+\b.*', fragment_source)
+        if version_match:
+            end_pos = version_match.end()
+            fragment_source = fragment_source[:end_pos] + preamble + fragment_source[end_pos:]
+        else:
+            fragment_source = preamble + fragment_source
+
         # Resolve includes
         fragment_source = self.resolve_includes(fragment_source, base_path)
         if vertex_source is None:

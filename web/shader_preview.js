@@ -51,8 +51,24 @@ class ShaderPreviewWidget {
         `;
 
         let fullSource = resolvedSource;
-        if (gl instanceof WebGL2RenderingContext && !resolvedSource.includes("#version")) {
-            fullSource = "#version 300 es\nprecision highp float;\n" + resolvedSource;
+        const preamble = `
+            uniform float iTime;
+            uniform float u_time;
+            uniform vec3 iResolution;
+            uniform vec3 u_resolution;
+            uniform vec4 iMouse;
+        `;
+
+        if (gl instanceof WebGL2RenderingContext) {
+            const versionMatch = resolvedSource.match(/#version\s+\d+\s+es/);
+            if (versionMatch) {
+                const endPos = versionMatch.index + versionMatch[0].length;
+                fullSource = resolvedSource.slice(0, endPos) + "\nprecision highp float;\n" + preamble + resolvedSource.slice(endPos);
+            } else {
+                fullSource = "#version 300 es\nprecision highp float;\n" + preamble + resolvedSource;
+            }
+        } else {
+            fullSource = preamble + resolvedSource;
         }
 
         const vs = this.compileShader(gl.VERTEX_SHADER, vert);

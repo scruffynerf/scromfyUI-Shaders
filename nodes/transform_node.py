@@ -1,4 +1,5 @@
 import os
+import math
 from .includes.shader_manager import ShaderContext, GLSLContext
 
 class ShaderTransform:
@@ -7,21 +8,28 @@ class ShaderTransform:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "offset": ("VEC2", {"default": [0.0, 0.0]}),
-                "rotate": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.1}),
-                "tile": ("VEC2", {"default": [1.0, 1.0]}),
+                "offset (vec2)": ("VEC2", {"default": [0.0, 0.0]}),
+                "scale (vec2)": ("VEC2", {"default": [1.0, 1.0]}),
+                "rotate": ("FLOAT", {"default": 0.0, "min": -360.0, "max": 360.0, "step": 0.01}),
+                "tile (vec2)": ("VEC2", {"default": [1.0, 1.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Transform"
 
-    def render(self, image, offset, rotate, tile, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        offset = kwargs.get("offset (vec2)")
+        scale = kwargs.get("scale (vec2)")
+        rotate = kwargs.get("rotate")
+        tile = kwargs.get("tile (vec2)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             
@@ -42,9 +50,7 @@ class ShaderTransform:
         
         # Shader specific uniforms
         ctx.uniforms["offset"] = tuple(offset)
-        # Convert degrees to radians for shader if needed, but jovi uses radians or degrees?
-        # Jovi's comment says 0..2pi, but 360 in UI is better.
-        import math
+        ctx.uniforms["scale"] = tuple(scale)
         ctx.uniforms["rotate"] = float(rotate) * math.pi / 180.0
         ctx.uniforms["tile"] = tuple(tile)
             
@@ -52,10 +58,11 @@ class ShaderTransform:
         
         # Update context
         context.uniforms["offset"] = tuple(offset)
+        context.uniforms["scale"] = tuple(scale)
         context.uniforms["rotate"] = float(rotate) * math.pi / 180.0
         context.uniforms["tile"] = tuple(tile)
         
-        return (result, context)
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderTransform": ShaderTransform,

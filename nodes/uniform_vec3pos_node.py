@@ -5,20 +5,23 @@ class ShaderUniformVec3Pos:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "name": ("STRING", {"default": "u_pos3"}),
-                "pos": ("VEC3POS", {"default": "0.0,0.0,0.0"}),
+                "name": ("STRING", {"default": "u_pos"}),
+                "pos (vec3)": ("VEC3POS", {"default": [0.0, 0.0, 1.0]}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
             }
         }
 
-    RETURN_TYPES = ("VEC3", "GLSL_CONTEXT")
-    RETURN_NAMES = ("vec3", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "VEC3")
+    RETURN_NAMES = ("context", "vec3")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
-    def append(self, name, pos, context=None):
+    def append(self, **kwargs):
+        name = kwargs.get("name")
+        pos = kwargs.get("pos (vec3)")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
         
@@ -30,7 +33,7 @@ class ShaderUniformVec3Pos:
             
         val = (coords[0], coords[1], coords[2])
         context.uniforms[name] = val
-        return (val, context)
+        return (context, val)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformVec3Pos": ShaderUniformVec3Pos,

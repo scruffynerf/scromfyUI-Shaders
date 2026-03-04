@@ -13,8 +13,8 @@ class ShaderUniformInt:
             }
         }
 
-    RETURN_TYPES = ("INT", "GLSL_CONTEXT")
-    RETURN_NAMES = ("int", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "INT")
+    RETURN_NAMES = ("context", "int")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
@@ -22,7 +22,7 @@ class ShaderUniformInt:
         if context is None:
             context = GLSLContext()
         context.uniforms[name] = int(value)
-        return (int(value), context)
+        return (context, int(value))
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformInt": ShaderUniformInt,

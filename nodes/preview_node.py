@@ -15,8 +15,8 @@ class ShaderPreview:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders"
 
@@ -36,7 +36,7 @@ class ShaderPreview:
         result = ctx.render(shader_code, width, height)
         
         # We also return the context so it can be chained
-        return (result, context)
+        return (context, result)
 
 NODE_CLASS_MAPPINGS = {
     "ShaderPreview": ShaderPreview,

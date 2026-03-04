@@ -13,8 +13,8 @@ class ShaderUniformImage:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "append"
     CATEGORY = "Scromfy/Shaders/Uniforms"
 
@@ -23,7 +23,7 @@ class ShaderUniformImage:
             context = GLSLContext()
         # Keep reference to the image tensor
         context.textures[name] = image
-        return (image, context)
+        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, image)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderUniformImage": ShaderUniformImage,

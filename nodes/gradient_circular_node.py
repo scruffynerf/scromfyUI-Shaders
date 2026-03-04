@@ -8,9 +8,9 @@ class ShaderGradientCircular:
             "required": {
                 "width": ("INT", {"default": 512, "min": 64, "max": 4096}),
                 "height": ("INT", {"default": 512, "min": 64, "max": 4096}),
-                "start_color": ("VEC4", {"default": [0.0, 0.0, 0.0, 1.0]}),
-                "end_color": ("VEC4", {"default": [1.0, 1.0, 1.0, 1.0]}),
-                "center": ("VEC2", {"default": [0.5, 0.5]}),
+                "start_color (vec4)": ("VEC4", {"default": [0.0, 0.0, 0.0, 1.0]}),
+                "end_color (vec4)": ("VEC4", {"default": [1.0, 1.0, 1.0, 1.0]}),
+                "center (vec2)": ("VEC2", {"default": [0.5, 0.5]}),
                 "radius": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 2.0, "step": 0.01}),
                 "reverse": ("BOOLEAN", {"default": False}),
             },
@@ -19,12 +19,20 @@ class ShaderGradientCircular:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Create"
 
-    def render(self, width, height, start_color, end_color, center, radius, reverse, context=None):
+    def render(self, **kwargs):
+        width = kwargs.get("width")
+        height = kwargs.get("height")
+        start_color = kwargs.get("start_color (vec4)")
+        end_color = kwargs.get("end_color (vec4)")
+        center = kwargs.get("center (vec2)")
+        radius = kwargs.get("radius")
+        reverse = kwargs.get("reverse")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             
@@ -56,7 +64,7 @@ class ShaderGradientCircular:
         context.uniforms["radius"] = float(radius)
         context.uniforms["reverse"] = reverse
         
-        return (result, context)
+        return {"ui": {"resolution": [width, height]}, "result": (context, result)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderGradientCircular": ShaderGradientCircular,

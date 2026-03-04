@@ -13,8 +13,8 @@ class ShaderMinMax:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "GLSL_CONTEXT")
-    RETURN_NAMES = ("image", "context")
+    RETURN_TYPES = ("GLSL_CONTEXT", "IMAGE")
+    RETURN_NAMES = ("context", "image")
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Filter"
 
@@ -39,7 +39,7 @@ class ShaderMinMax:
             
         result = ctx.render(shader_code, image.shape[2], image.shape[1], base_path=os.path.dirname(shader_path))
         
-        return (result, context)
+        return {"ui": {"resolution": [image.shape[2], image.shape[1]]}, "result": (context, result)}
 
 NODE_CLASS_MAPPINGS = {
     "ShaderMinMax": ShaderMinMax,

@@ -31,5 +31,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ShaderFileLoader": "Shader File Loader",
+    "ShaderFileLoader": "Shader: File Loader",
 }

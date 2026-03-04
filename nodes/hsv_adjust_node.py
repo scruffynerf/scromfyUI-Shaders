@@ -22,7 +22,13 @@ class ShaderHSVAdjust:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Color"
 
-    def render(self, image, hue, saturation, value, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        hue = kwargs.get("hue")
+        saturation = kwargs.get("saturation")
+        value = kwargs.get("value")
+        context = kwargs.get("context")
+        
         if context is None:
             context = GLSLContext()
 
@@ -55,5 +61,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ShaderHSVAdjust": "Shader HSV Adjust",
+    "ShaderHSVAdjust": "Shader: HSV Adjust",
 }

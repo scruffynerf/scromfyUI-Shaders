@@ -6,9 +6,11 @@ class ShaderUniformVec2Pos:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_pos"}),
-                "pos (vec2)": ("VEC2POS", {"default": [0.0, 0.0]}),
+                "x (vec2)": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "y (vec2)": ("FLOAT", {"default": 0.0, "step": 0.01}),
             },
             "optional": {
+                "pos (vec2)": ("VEC2POS",),
                 "context": ("GLSL_CONTEXT",),
             }
         }
@@ -20,18 +22,24 @@ class ShaderUniformVec2Pos:
 
     def append(self, **kwargs):
         name = kwargs.get("name")
+        x = kwargs.get("x", 0.0)
+        y = kwargs.get("y", 0.0)
         pos = kwargs.get("pos (vec2)")
         context = kwargs.get("context")
+        
         if context is None:
             context = GLSLContext()
         
-        # Handle string input from custom widget or tuple from other nodes
-        if isinstance(pos, str):
-            coords = [float(x) for x in pos.split(",")]
+        if pos is not None:
+            # Handle string input from custom widget or tuple from other nodes
+            if isinstance(pos, str):
+                coords = [float(val_str) for val_str in pos.split(",")]
+            else:
+                coords = [float(val_item) for val_item in pos]
+            val = (coords[0], coords[1])
         else:
-            coords = [float(x) for x in pos]
+            val = (float(x), float(y))
             
-        val = (coords[0], coords[1])
         context.uniforms[name] = val
         return (context, val)
 

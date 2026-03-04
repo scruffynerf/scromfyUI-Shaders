@@ -110,12 +110,17 @@ class ShaderContext:
             uniform vec4 iMouse;
         """
         
+        # Ensure version tag and precision
+        if not re.search(r'#version\s+\d+\b', fragment_source):
+            fragment_source = "#version 330\nprecision highp float;\n" + fragment_source
+            
         # Insert preamble after #version if present, else at top
         version_match = re.search(r'#version\s+\d+\b.*', fragment_source)
         if version_match:
             end_pos = version_match.end()
             fragment_source = fragment_source[:end_pos] + preamble + fragment_source[end_pos:]
         else:
+            # Should not happen now but kept for safety
             fragment_source = preamble + fragment_source
 
         # Resolve includes

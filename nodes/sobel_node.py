@@ -18,7 +18,9 @@ class ShaderSobel:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Filter"
 
-    def render(self, image, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             

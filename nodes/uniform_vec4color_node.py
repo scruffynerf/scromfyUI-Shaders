@@ -6,9 +6,13 @@ class ShaderUniformVec4Color:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_color"}),
-                "color (vec4)": ("VEC4COLOR", {"default": [1.0, 1.0, 1.0, 1.0]}),
+                "r": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "g": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "b": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "a": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
             },
             "optional": {
+                "color (vec4)": ("VEC4COLOR",),
                 "context": ("GLSL_CONTEXT",),
             }
         }
@@ -20,18 +24,24 @@ class ShaderUniformVec4Color:
 
     def append(self, **kwargs):
         name = kwargs.get("name")
+        r = kwargs.get("r (vec4)", 1.0)
+        g = kwargs.get("g (vec4)", 1.0)
+        b = kwargs.get("b (vec4)", 1.0)
+        a = kwargs.get("a (vec4)", 1.0)
         color = kwargs.get("color (vec4)")
         context = kwargs.get("context")
+        
         if context is None:
             context = GLSLContext()
         
-        # Handle string input from custom widget or tuple from other nodes
-        if isinstance(color, str):
-            channels = [float(x) for x in color.split(",")]
+        if color is not None:
+             if isinstance(color, str):
+                val = tuple(float(x) for x in color.split(","))
+             else:
+                val = tuple(color)
         else:
-            channels = [float(x) for x in color]
+            val = (float(r), float(g), float(b), float(a))
             
-        val = (channels[0], channels[1], channels[2], channels[3])
         context.uniforms[name] = val
         return (context, val)
 

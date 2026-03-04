@@ -21,7 +21,12 @@ class ShaderNormalMap:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Create"
 
-    def render(self, image, scalar, detail, flip, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        scalar = kwargs.get("scalar")
+        detail = kwargs.get("detail")
+        flip = kwargs.get("flip")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
             

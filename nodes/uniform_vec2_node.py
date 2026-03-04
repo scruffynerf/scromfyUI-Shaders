@@ -6,7 +6,8 @@ class ShaderUniformVec2:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_vec2"}),
-                "value (vec2)": ("VEC2", {"default": [0.0, 0.0]}),
+                "x": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "y": ("FLOAT", {"default": 0.0, "step": 0.01}),
             },
             "optional": {
                 "context": ("GLSL_CONTEXT",),
@@ -20,10 +21,12 @@ class ShaderUniformVec2:
 
     def append(self, **kwargs):
         name = kwargs.get("name")
-        val = kwargs.get("value (vec2)")
+        x = kwargs.get("x (vec2)", 0.0)
+        y = kwargs.get("y (vec2)", 0.0)
         context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
+        val = (float(x), float(y))
         context.uniforms[name] = val
         return (context, val)
 

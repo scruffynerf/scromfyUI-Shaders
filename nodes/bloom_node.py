@@ -22,7 +22,13 @@ class ShaderBloom:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Filter"
 
-    def render(self, image, threshold, intensity, blur_size, context=None):
+    def render(self, **kwargs):
+        image = kwargs.get("image")
+        threshold = kwargs.get("threshold")
+        intensity = kwargs.get("intensity")
+        blur_size = kwargs.get("blur_size")
+        context = kwargs.get("context")
+        
         if context is None:
             context = GLSLContext()
 
@@ -59,5 +65,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ShaderBloom": "Shader Bloom",
+    "ShaderBloom": "Shader: Bloom",
 }

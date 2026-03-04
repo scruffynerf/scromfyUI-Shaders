@@ -6,9 +6,12 @@ class ShaderUniformVec3Pos:
         return {
             "required": {
                 "name": ("STRING", {"default": "u_pos"}),
-                "pos (vec3)": ("VEC3POS", {"default": [0.0, 0.0, 1.0]}),
+                "x": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "y": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "z": ("FLOAT", {"default": 1.0, "step": 0.01}),
             },
             "optional": {
+                "pos (vec3)": ("VEC3POS",),
                 "context": ("GLSL_CONTEXT",),
             }
         }
@@ -20,18 +23,25 @@ class ShaderUniformVec3Pos:
 
     def append(self, **kwargs):
         name = kwargs.get("name")
+        x = kwargs.get("x (vec3)", 0.0)
+        y = kwargs.get("y (vec3)", 0.0)
+        z = kwargs.get("z (vec3)", 1.0)
         pos = kwargs.get("pos (vec3)")
         context = kwargs.get("context")
+        
         if context is None:
             context = GLSLContext()
         
-        # Handle string input from custom widget or tuple from other nodes
-        if isinstance(pos, str):
-            coords = [float(x) for x in pos.split(",")]
+        if pos is not None:
+            # Handle string input from custom widget or tuple from other nodes
+            if isinstance(pos, str):
+                coords = [float(x) for x in pos.split(",")]
+            else:
+                coords = [float(x) for x in pos]
+            val = (coords[0], coords[1], coords[2])
         else:
-            coords = [float(x) for x in pos]
+            val = (float(x), float(y), float(z))
             
-        val = (coords[0], coords[1], coords[2])
         context.uniforms[name] = val
         return (context, val)
 

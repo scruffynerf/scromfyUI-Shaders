@@ -20,7 +20,11 @@ class ShaderRunner:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders"
 
-    def render(self, fragment_code, width, height, context=None):
+    def render(self, **kwargs):
+        fragment_code = kwargs.get("fragment_code")
+        width = kwargs.get("width")
+        height = kwargs.get("height")
+        context = kwargs.get("context")
         if context is None:
             context = GLSLContext()
 
@@ -93,5 +97,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ShaderRunner": "Shader Runner",
+    "ShaderRunner": "Shader: Runner",
 }

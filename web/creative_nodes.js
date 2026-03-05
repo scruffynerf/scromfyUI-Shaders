@@ -173,12 +173,24 @@ function setupRenderNode(node, nodeData) {
     node.addDOMWidget("creative_ui", "UI", root);
 
     node.getConnectedCode = function () {
-        const link = this.inputs[0]?.link;
-        if (link) {
-            const originNode = app.graph.getNodeById(app.graph.links[link].origin_id);
-            if (originNode) {
-                const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code");
-                return widget ? widget.value : "";
+        const inputName = isP5 ? "p5_code" : "shader_code";
+        const input = this.inputs?.find(i => i.name === inputName);
+        const linkId = input?.link;
+
+        if (linkId !== null && linkId !== undefined) {
+            const link = app.graph.links[linkId];
+            if (link) {
+                const originNode = app.graph.getNodeById(link.origin_id);
+                if (originNode) {
+                    // Try to find the code widget on the origin node
+                    const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
+                    if (widget) return widget.value;
+                    logger.warn("Origin node found but no code widget found:", originNode.type);
+                } else {
+                    logger.warn("Origin node not found for link:", link.origin_id);
+                }
+            } else {
+                logger.warn("Link not found in app.graph.links:", linkId);
             }
         }
         return "";
@@ -187,7 +199,11 @@ function setupRenderNode(node, nodeData) {
     node.updatePreview = function () {
         const code = this.getConnectedCode();
         if (!code) {
-            previewContainer.innerHTML = "<div style='color: #666; padding: 20px; text-align: center;'>Please connect a Loader...</div>";
+            if (this.inputs?.some(i => i.link !== null)) {
+                previewContainer.innerHTML = "<div style='color: #884444; padding: 20px; text-align: center;'>Connection detected but no code found in source node.</div>";
+            } else {
+                previewContainer.innerHTML = "<div style='color: #666; padding: 20px; text-align: center;'>Please connect a Loader...</div>";
+            }
             return;
         }
 
@@ -227,10 +243,10 @@ function setupRenderNode(node, nodeData) {
         });
     };
 
-    // Poll for changes in source node's code (ComfyUI doesn't always trigger events for widget value changes)
+    // Poll for changes in source node's code
     let lastCode = "";
     const pollId = setInterval(() => {
-        if (!this.app || !this.app.graph) {
+        if (!node.graph) {
             clearInterval(pollId);
             return;
         }
@@ -239,7 +255,7 @@ function setupRenderNode(node, nodeData) {
             lastCode = currentCode;
             node.updatePreview();
         }
-    }, 500);
+    }, 250);
 
     // Cleanup interval on node removed
     const onRemoved = node.onRemoved;

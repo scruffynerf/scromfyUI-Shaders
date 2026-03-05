@@ -28,6 +28,13 @@ def load_nodes():
             except Exception as e:
                 logger.error(f"Failed to load node module {node_name}: {e}")
 
+    # Load creative API
+    try:
+        from .nodes.includes.creative_api import setup_creative_api
+        setup_creative_api()
+    except Exception as e:
+        logger.error(f"Failed to load creative API: {e}")
+
 load_nodes()
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

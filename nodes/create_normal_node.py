@@ -30,7 +30,7 @@ class ShaderNormalMap:
         if context is None:
             context = GLSLContext()
             
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", "create_normal.frag")
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", "create_normal.frag")
         with open(shader_path, 'r') as f:
             shader_code = f.read()
             

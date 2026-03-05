@@ -33,7 +33,7 @@ class ShaderTransform:
         if context is None:
             context = GLSLContext()
             
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", "transform.frag")
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", "transform.frag")
         with open(shader_path, 'r') as f:
             shader_code = f.read()
             

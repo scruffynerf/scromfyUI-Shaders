@@ -28,7 +28,7 @@ class ShaderFilterRange:
         if context is None:
             context = GLSLContext()
             
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", "filter_range.frag")
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", "filter_range.frag")
         with open(shader_path, 'r') as f:
             shader_code = f.read()
             

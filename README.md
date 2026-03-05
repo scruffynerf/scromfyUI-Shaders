@@ -12,6 +12,13 @@ Shader nodes for ComfyUI.
 - **High-Performance Previews**: Real-time WebGL previews directly on-node and ModernGL-accelerated rendering for final output.
 - **Interactive Widgets**: Specialized widgets for colors and positions with live feedback.
 
+## Rendering Backend
+
+This project uses **[ModernGL](https://moderngl.readthedocs.io/)** with a **headless** standalone context (via EGL or OSMesa on Linux) for all server-side rendering. No windowing system or display is required.
+
+> [!NOTE]
+> **Why not GLFW?** Jovi_GLSL uses GLFW for its OpenGL context, which requires an active display/windowing system. This makes it incompatible with remote/headless ComfyUI setups (e.g., a server accessed via a browser on a laptop). GLFW is intentionally **not used here** — ModernGL's standalone context works correctly in those environments.
+
 ## Installation
 1. Clone this repository into your `ComfyUI/custom_nodes` folder:
    ```bash

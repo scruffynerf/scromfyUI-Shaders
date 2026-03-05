@@ -32,7 +32,7 @@ class ShaderGrayscale:
         if context is None:
             context = GLSLContext()
             
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", "color_grayscale.frag")
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", "color_grayscale.frag")
         with open(shader_path, "r") as f:
             shader_code = f.read()
             

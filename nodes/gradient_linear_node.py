@@ -38,7 +38,7 @@ class ShaderGradientLinear:
         if context is None:
             context = GLSLContext()
             
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", "gradient_linear.frag")
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", "gradient_linear.frag")
         with open(shader_path, 'r') as f:
             shader_code = f.read()
             

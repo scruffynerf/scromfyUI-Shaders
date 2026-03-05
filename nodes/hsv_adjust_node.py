@@ -33,7 +33,7 @@ class ShaderHSVAdjust:
             context = GLSLContext()
 
         # Get the directory where the shader is located for include resolution
-        base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders")
+        base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag")
         shader_path = os.path.join(base_dir, "color_hsv.frag")
         
         with open(shader_path, "r") as f:

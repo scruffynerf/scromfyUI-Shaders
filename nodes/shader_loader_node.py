@@ -6,7 +6,7 @@ class ShaderFileLoader:
     @classmethod
     def INPUT_TYPES(s):
         # Scan shaders directory
-        shader_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders")
+        shader_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag")
         shaders = []
         if os.path.exists(shader_dir):
             shaders = [f for f in os.listdir(shader_dir) if f.endswith(".frag")]
@@ -22,7 +22,7 @@ class ShaderFileLoader:
     CATEGORY = "Scromfy/Shaders"
 
     def load(self, shader_file):
-        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shaders", shader_file)
+        shader_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "graphic_code", "frag", shader_file)
         with open(shader_path, 'r') as f:
             return (f.read(),)
 

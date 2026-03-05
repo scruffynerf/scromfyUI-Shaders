@@ -35,27 +35,35 @@ export class P5Runner {
         window._scromfyUniforms = uniforms;
 
         const sketch = (p) => {
-            // Inject uniforms as variables in p5 instance
+            // Inject uniforms as properties of p
             for (const [k, v] of Object.entries(uniforms)) {
                 p[k] = v;
             }
 
+            p.setup = () => {
+                p.createCanvas(this.width, this.height);
+            };
+
             try {
-                // We use s_eval to execute the code in the context of the sketch
-                // This is a simplified version of what P5Preview.js does
-                const setupFunc = new Function('p', 'uniforms', `${transpiled}\nif(typeof setup === 'function') setup();`);
-                const drawFunc = new Function('p', 'uniforms', `${transpiled}\nif(typeof draw === 'function') draw();`);
-
-                p.setup = () => {
-                    p.createCanvas(this.width, this.height);
-                    try { setupFunc(p, uniforms); } catch (e) { logger.error("P5 Setup Error:", e); }
-                };
-
-                p.draw = () => {
-                    try { drawFunc(p, uniforms); } catch (e) { logger.error("P5 Draw Error:", e); }
-                };
+                // Use with(p) to allow global-style p5 code in instance mode
+                const wrapper = new Function('p', 'uniforms', `
+                    with(p) {
+                        ${transpiled}
+                        if (typeof setup === 'function') {
+                            const userSetup = setup;
+                            p.setup = () => {
+                                p.createCanvas(${this.width}, ${this.height});
+                                userSetup();
+                            };
+                        }
+                        if (typeof draw === 'function') {
+                            p.draw = draw;
+                        }
+                    }
+                `);
+                wrapper(p, uniforms);
             } catch (e) {
-                logger.error("P5 Compilation Error:", e);
+                logger.error("P5 Evaluation Error:", e);
             }
         };
 

@@ -175,22 +175,27 @@ function setupRenderNode(node, nodeData) {
     node.getConnectedCode = function () {
         const inputName = isP5 ? "p5_code" : "shader_code";
         const input = this.inputs?.find(i => i.name === inputName);
-        const linkId = input?.link;
+        console.log(`[Scromfy] getConnectedCode for ${nodeData.name}:`, { inputName, hasInput: !!input, link: input?.link });
 
+        const linkId = input?.link;
         if (linkId !== null && linkId !== undefined) {
             const link = app.graph.links[linkId];
+            console.log(`[Scromfy] Link ${linkId}:`, link);
             if (link) {
                 const originNode = app.graph.getNodeById(link.origin_id);
+                console.log(`[Scromfy] Origin Node ${link.origin_id}:`, originNode?.type);
                 if (originNode) {
-                    // Try to find the code widget on the origin node
                     const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
-                    if (widget) return widget.value;
-                    logger.warn("Origin node found but no code widget found:", originNode.type);
+                    if (widget) {
+                        console.log(`[Scromfy] Found code widget on ${originNode.type}, length:`, widget.value?.length);
+                        return widget.value;
+                    }
+                    console.warn("[Scromfy] Origin node found but no code widget found:", originNode.type, originNode.widgets?.map(w => w.name));
                 } else {
-                    logger.warn("Origin node not found for link:", link.origin_id);
+                    console.warn("[Scromfy] Origin node not found for link:", link.origin_id);
                 }
             } else {
-                logger.warn("Link not found in app.graph.links:", linkId);
+                console.warn("[Scromfy] Link not found in app.graph.links:", linkId);
             }
         }
         return "";

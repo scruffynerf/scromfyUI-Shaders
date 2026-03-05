@@ -1,5 +1,5 @@
-# Scromfy Shaders - Color Conversion Utilities mirroring shaders/lib/convert.lib
-# Mirror of web/lib_convert.js and shaders/lib/convert.lib
+# Scromfy Shaders - Color Conversion Utilities mirroring web/lib/convert.lib
+# Mirror of web/lib_convert.js and web/lib/convert.lib
 # Ensure any changes here are mirrored across all versions.
 
 import math

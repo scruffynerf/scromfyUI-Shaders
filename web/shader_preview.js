@@ -1,4 +1,4 @@
-import { app } from "../../scripts/app.js";
+import { app } from "/scripts/app.js";
 
 class ShaderPreviewWidget {
     constructor(inputName, node) {
@@ -106,11 +106,11 @@ class ShaderPreviewWidget {
             try {
                 let fetchPath = m.path;
                 if (fetchPath.startsWith("lygia/")) {
-                    // Fetch relative to current file root
                     fetchPath = "./lygia/" + fetchPath.substring(6);
                 } else if (fetchPath.startsWith("lib/")) {
-                    // Fetch relative to current file root
                     fetchPath = "./lib/" + fetchPath.substring(4);
+                } else if (fetchPath.startsWith(".lib/")) {
+                    fetchPath = "./lib/" + fetchPath.substring(5);
                 } else {
                     continue;
                 }

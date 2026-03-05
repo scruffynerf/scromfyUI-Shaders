@@ -1,5 +1,5 @@
-// Scromfy Shaders - Shading Utilities mirroring shaders/lib/shading.lib
-// Mirror of nodes/includes/lib_shading.py and shaders/lib/shading.lib
+// Scromfy Shaders - Shading Utilities mirroring web/lib/shading.lib
+// Mirror of nodes/includes/lib_shading.py and web/lib/shading.lib
 // Ensure any changes here are mirrored across all versions.
 
 // (Stub for future WebGL 3D preview shading logic)

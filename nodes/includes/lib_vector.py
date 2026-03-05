@@ -2,8 +2,8 @@ import math
 import numpy as np
 from .lib_const import M_DEG2RAD, M_TAU
 
-# Scromfy Shaders - Vector Utilities mirroring shaders/lib/vector.lib
-# Mirror of web/lib_vector.js and shaders/lib/vector.lib
+# Scromfy Shaders - Vector Utilities mirroring web/lib/vector.lib
+# Mirror of web/lib_vector.js and web/lib/vector.lib
 # Ensure any changes here are mirrored across all versions.
 
 class Vector:

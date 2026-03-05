@@ -10,6 +10,7 @@ import { parseUniforms, createUniformControl } from "./uniform_parser.js";
 import { createEditor } from "./monaco_setup.js";
 import { AIAssistant } from "./ai_assistant.js";
 import { P5Runner } from "./p5_runner.js";
+import { GLSLRunner } from "./glsl_runner.js";
 
 app.registerExtension({
     name: "Scromfy.CreativeNodes",
@@ -32,28 +33,54 @@ app.registerExtension({
 
             if (nodeData.name === "CreativeShaderRender" || nodeData.name === "CreativeP5Render") {
                 setupRenderNode(node, nodeData);
-            } else if (nodeData.name === "CreativeSettings") {
-                const selectWidget = node.widgets.find(w => w.name === "select_shader");
-                const codeWidget = node.widgets.find(w => w.name === "shader_code");
-                if (selectWidget && codeWidget) {
-                    selectWidget.callback = async (value) => {
-                        if (!value || value === "None") return;
-                        try {
-                            const res = await fetch(`/scromfy/graphic_code/${value}`);
-                            const data = await res.json();
-                            if (data.code) {
-                                codeWidget.value = data.code;
-                                app.graph.setDirtyCanvas(true, true);
-                            }
-                        } catch (err) {
-                            logger.error("Failed to load shader:", err);
-                        }
-                    };
-                }
+            } else if (nodeData.name === "CreativeGLSLLoader" || nodeData.name === "CreativeP5Loader") {
+                setupLoaderNode(node, nodeData);
             }
         };
     }
 });
+
+function setupLoaderNode(node, nodeData) {
+    const isP5 = nodeData.name === "CreativeP5Loader";
+    const selectWidget = node.widgets.find(w => w.name === (isP5 ? "select_p5" : "select_shader"));
+    const codeWidget = node.widgets.find(w => w.name === (isP5 ? "p5_code" : "shader_code"));
+
+    if (!codeWidget) return;
+
+    // Hide the multiline text widget, we'll use Monaco
+    hideWidget(codeWidget);
+
+    const root = document.createElement("div");
+    root.className = "sc-node";
+
+    const editorContainer = document.createElement("div");
+    editorContainer.className = "sc-editor-container";
+    root.appendChild(editorContainer);
+
+    node.addDOMWidget("creative_loader_ui", "UI", root);
+
+    let editor;
+    createEditor(editorContainer, codeWidget.value, isP5 ? "javascript" : "glsl", (val) => {
+        codeWidget.value = val;
+    }).then(ed => editor = ed);
+
+    if (selectWidget) {
+        selectWidget.callback = async (value) => {
+            if (!value || value === "None") return;
+            try {
+                const res = await fetch(`/scromfy/graphic_code/${value}`);
+                const data = await res.json();
+                if (data.code) {
+                    codeWidget.value = data.code;
+                    if (editor) editor.setValue(data.code);
+                    app.graph.setDirtyCanvas(true, true);
+                }
+            } catch (err) {
+                logger.error("Failed to load:", err);
+            }
+        };
+    }
+}
 
 function setupRenderNode(node, nodeData) {
     const isP5 = nodeData.name === "CreativeP5Render";
@@ -118,6 +145,8 @@ function setupRenderNode(node, nodeData) {
             customUniformWidget.value = JSON.stringify(uniforms);
             bakeBtn.textContent = "Bake Animation";
         };
+    } else {
+        node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
     }
 
     root.appendChild(toolSection);
@@ -128,10 +157,12 @@ function setupRenderNode(node, nodeData) {
     createEditor(editorContainer, codeWidget.value, isP5 ? "javascript" : "glsl", (val) => {
         codeWidget.value = val;
         updateUniforms(val);
+        let u = {};
+        try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
         if (isP5) {
-            let u = {};
-            try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
             node.p5Runner.run(val, u);
+        } else {
+            node.glslRunner.run(val, u);
         }
     }).then(ed => editor = ed);
 
@@ -147,7 +178,11 @@ function setupRenderNode(node, nodeData) {
             const ctrl = createUniformControl(def, currentUniforms[def.name], (val) => {
                 currentUniforms[def.name] = val;
                 customUniformWidget.value = JSON.stringify(currentUniforms);
-                if (isP5 && editor) node.p5Runner.run(editor.getValue(), currentUniforms);
+                if (editor) {
+                    const code = editor.getValue();
+                    if (isP5) node.p5Runner.run(code, currentUniforms);
+                    else node.glslRunner.run(code, currentUniforms);
+                }
             });
             uniformGrid.appendChild(ctrl);
         });
@@ -169,4 +204,15 @@ function setupRenderNode(node, nodeData) {
     };
 
     updateUniforms(codeWidget.value);
+
+    // Initial preview run
+    setTimeout(() => {
+        let u = {};
+        try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
+        if (isP5) {
+            if (node.p5Runner) node.p5Runner.run(codeWidget.value, u);
+        } else {
+            if (node.glslRunner) node.glslRunner.run(codeWidget.value, u);
+        }
+    }, 100);
 }

@@ -1,5 +1,5 @@
-// Scromfy Shaders - Mathematical Constants mirroring shaders/lib/const.lib
-// Mirror of nodes/includes/lib_const.py and shaders/lib/const.lib
+// Scromfy Shaders - Mathematical Constants mirroring web/lib/const.lib
+// Mirror of nodes/includes/lib_const.py and web/lib/const.lib
 // Ensure any changes here are mirrored across all versions.
 
 export const M_EPSILON = 1.0e-10;

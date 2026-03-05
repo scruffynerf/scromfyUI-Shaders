@@ -14,9 +14,9 @@ from .shader_manager import ShaderContext
 
 # Constants / Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Graphic code (Shaders, P5) will be stored in 'graphic_code'
-GRAPHIC_CODE_DIR = os.path.join(BASE_DIR, "graphic_code")
-P5_CACHE_DIR = os.path.join(BASE_DIR, "nodes", "p5_cache")
+# Graphic code (Shaders, P5) will be stored in 'graphic_code' at the project root
+GRAPHIC_CODE_DIR = os.path.join(os.path.dirname(BASE_DIR), "graphic_code")
+P5_CACHE_DIR = os.path.join(BASE_DIR, "p5_cache")
 
 os.makedirs(GRAPHIC_CODE_DIR, exist_ok=True)
 os.makedirs(P5_CACHE_DIR, exist_ok=True)
@@ -34,6 +34,30 @@ def get_available_shaders():
                 shaders.append(rel_path.replace("\\", "/"))
                 
     return sorted(shaders)
+
+def get_available_frag_shaders():
+    shaders = ["None"]
+    frag_dir = os.path.join(GRAPHIC_CODE_DIR, "frag")
+    if not os.path.exists(frag_dir):
+        return shaders
+    
+    for f in os.listdir(frag_dir):
+        if f.endswith((".glsl", ".frag")):
+            shaders.append(os.path.join("frag", f).replace("\\", "/"))
+                
+    return sorted(shaders)
+
+def get_available_p5_sketches():
+    sketches = ["None"]
+    p5_dir = os.path.join(GRAPHIC_CODE_DIR, "p5")
+    if not os.path.exists(p5_dir):
+        return sketches
+    
+    for f in os.listdir(p5_dir):
+        if f.endswith(".js"):
+            sketches.append(os.path.join("p5", f).replace("\\", "/"))
+                
+    return sorted(sketches)
 
 DEFAULT_SHADER = """void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;

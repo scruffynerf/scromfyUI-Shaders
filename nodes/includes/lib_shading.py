@@ -1,7 +1,7 @@
 import numpy as np
 
-# Scromfy Shaders - Shading Utilities mirroring shaders/lib/shading.lib
-# Mirror of web/lib_shading.js and shaders/lib/shading.lib
+# Scromfy Shaders - Shading Utilities mirroring web/lib/shading.lib
+# Mirror of web/lib_shading.js and web/lib/shading.lib
 # Ensure any changes here are mirrored across all versions.
 
 SHADING_SCHARR_X = np.array([

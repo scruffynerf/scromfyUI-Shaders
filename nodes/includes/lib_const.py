@@ -1,5 +1,5 @@
-# Scromfy Shaders - Mathematical Constants mirroring shaders/lib/const.lib
-# Mirror of web/lib_const.js and shaders/lib/const.lib
+# Scromfy Shaders - Mathematical Constants mirroring web/lib/const.lib
+# Mirror of web/lib_const.js and web/lib/const.lib
 # Ensure any changes here are mirrored across all versions.
 
 import math

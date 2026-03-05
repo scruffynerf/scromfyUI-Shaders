@@ -16,7 +16,7 @@ Every utility function added to the project must be implemented in three places 
 - `web/`: Frontend JS extensions and library mirrors.
 - `web/lib/`: GLSL utility library (`.lib` files).
 - `web/lygia/`: Consolidated LYGIA library.
-- `shaders/`: Library of `.frag` files.
+- `graphic_code/frag/`: Library of `.frag` files.
 
 ## Auto-Registration
 All nodes in `nodes/` are auto-discovered and registered by `__init__.py`.

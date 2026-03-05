@@ -63,13 +63,41 @@ function setupLoaderNode(node, nodeData) {
 
     const toolSection = document.createElement("div");
     toolSection.className = "sc-section";
+    const aiTitle = document.createElement("div");
+    aiTitle.className = "sc-title";
+    aiTitle.textContent = "AI Assistant";
+    toolSection.appendChild(aiTitle);
+
+    const aiQuery = document.createElement("textarea");
+    aiQuery.className = "sc-input";
+    aiQuery.style.width = "100%";
+    aiQuery.style.height = "60px";
+    aiQuery.style.marginBottom = "8px";
+    aiQuery.placeholder = "Describe changes (e.g., 'Make it reactive to time')...";
+    toolSection.appendChild(aiQuery);
+
     const aiBtn = document.createElement("button");
     aiBtn.className = "sc-btn sc-btn-primary";
-    aiBtn.textContent = "Ask AI Assistant";
+    aiBtn.style.width = "100%";
+    aiBtn.textContent = "Generate Code";
     toolSection.appendChild(aiBtn);
 
     root.appendChild(toolSection);
     node.addDOMWidget("creative_loader_ui", "UI", root);
+
+    // AI Settings Resolver
+    node.getAISettings = function () {
+        const slot = this.findInputSlot("ai_settings");
+        if (slot !== -1) {
+            const origin = this.getInputNode(slot);
+            if (origin && origin.type === "CreativeAIConfig") {
+                // CreativeAIConfig outputs settings in its first output
+                // But since it's a Python node, we might need to rely on the graph values
+                // For now, let's assume we can pull it if it was processed, or use defaults
+            }
+        }
+        return null;
+    };
 
     let editor;
     createEditor(editorContainer, codeWidget.value, isP5 ? "javascript" : "glsl", (val) => {
@@ -95,18 +123,40 @@ function setupLoaderNode(node, nodeData) {
     }
 
     aiBtn.onclick = async () => {
-        const prompt = window.prompt("What should I generate/fix?");
-        if (!prompt) return;
+        const prompt = aiQuery.value;
+        if (!prompt) {
+            alert("Please enter a prompt for the AI.");
+            return;
+        }
+
+        // Try to get AI settings from connected node
+        let settings = null;
+        const aiSlot = node.findInputSlot("ai_settings");
+        if (aiSlot !== -1) {
+            const aiNode = node.getInputNode(aiSlot);
+            if (aiNode) {
+                // Pull widgets from the config node
+                const urlW = aiNode.widgets?.find(w => w.name === "api_url");
+                const modelW = aiNode.widgets?.find(w => w.name === "model");
+                if (urlW && modelW) {
+                    settings = { api_url: urlW.value, model: modelW.value };
+                }
+            }
+        }
+
         aiBtn.textContent = "Generating...";
+        aiBtn.disabled = true;
         try {
-            const newCode = await window.scromfyAI.generate(prompt, codeWidget.value, isP5 ? "js" : "glsl");
+            const newCode = await window.scromfyAI.generate(prompt, codeWidget.value, isP5 ? "js" : "glsl", settings);
             codeWidget.value = newCode;
             if (editor) editor.setValue(newCode);
+            aiQuery.value = ""; // Clear query on success
             app.graph.setDirtyCanvas(true, true);
         } catch (e) {
             alert("AI Error: " + e.message);
         }
-        aiBtn.textContent = "Ask AI Assistant";
+        aiBtn.textContent = "Generate Code";
+        aiBtn.disabled = false;
     };
 }
 
@@ -184,15 +234,23 @@ function setupRenderNode(node, nodeData) {
 
     node.getConnectedCode = function () {
         const inputName = isP5 ? "p5_code" : "shader_code";
-        const input = this.inputs?.find(i => i.name === inputName);
-        const linkId = input?.link;
-        if (linkId !== null && linkId !== undefined) {
-            const link = app.graph.links[linkId];
-            if (link) {
-                const originNode = app.graph.getNodeById(link.origin_id);
-                if (originNode) {
-                    const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
-                    return widget ? widget.value : "";
+        const slot = this.findInputSlot(inputName);
+        if (slot === -1) {
+            // console.debug(`[Scromfy] Slot ${inputName} not found on node`);
+            return "";
+        }
+
+        const originNode = this.getInputNode(slot);
+        if (originNode) {
+            // Find the code widget by name
+            const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
+            if (widget) {
+                return widget.value;
+            } else {
+                // Secondary check: if it's a simple string primitive, it might have a 'value' property or 'widgets[0]'
+                const fallbackWidget = originNode.widgets?.[0];
+                if (fallbackWidget && (fallbackWidget.name === "value" || fallbackWidget.type === "text" || fallbackWidget.type === "customtext")) {
+                    return fallbackWidget.value;
                 }
             }
         }
@@ -201,6 +259,8 @@ function setupRenderNode(node, nodeData) {
 
     node.updatePreview = function () {
         const code = this.getConnectedCode();
+        // console.debug(`[Scromfy] updatePreview triggered for ${nodeData.name}, code length:`, code?.length);
+
         if (!code) {
             const isConnected = this.inputs?.some(i => i.link !== null);
             messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
@@ -217,7 +277,13 @@ function setupRenderNode(node, nodeData) {
         if (isP5) {
             if (node.p5Runner) node.p5Runner.run(code, u);
         } else {
-            if (node.glslRunner) node.glslRunner.run(code, u);
+            if (node.glslRunner) {
+                node.glslRunner.run(code, u);
+            } else {
+                console.log("[Scromfy] Initializing missing GLSLRunner");
+                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+                node.glslRunner.run(code, u);
+            }
         }
     };
 
@@ -240,13 +306,15 @@ function setupRenderNode(node, nodeData) {
 
     let lastCode = "";
     const pollId = setInterval(() => {
-        // Persistent polling even if briefly detached
+        if (!node.graph) return; // Keep interval alive but wait for graph
+
         const currentCode = node.getConnectedCode();
         if (currentCode !== lastCode) {
+            console.log(`[Scromfy] Poll detected code change for node ${node.id} (${nodeData.name})`);
             lastCode = currentCode;
             node.updatePreview();
         }
-    }, 250);
+    }, 500); // 500ms is enough and safer
 
     const onRemoved = node.onRemoved;
     node.onRemoved = function () {

@@ -9,6 +9,9 @@ class CreativeGLSLLoader:
             "required": {
                 "select_shader": (get_available_frag_shaders(),),
                 "shader_code": ("STRING", {"multiline": True, "default": DEFAULT_SHADER, "dynamicPrompts": False}),
+            },
+            "optional": {
+                "ai_settings": ("SCROMFY_AI_SETTINGS",),
             }
         }
 

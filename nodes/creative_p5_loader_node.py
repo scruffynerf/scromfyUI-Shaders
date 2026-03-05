@@ -19,6 +19,9 @@ class CreativeP5Loader:
             "required": {
                 "select_p5": (get_available_p5_sketches(),),
                 "p5_code": ("STRING", {"multiline": True, "default": DEFAULT_P5, "dynamicPrompts": False}),
+            },
+            "optional": {
+                "ai_settings": ("SCROMFY_AI_SETTINGS",),
             }
         }
 

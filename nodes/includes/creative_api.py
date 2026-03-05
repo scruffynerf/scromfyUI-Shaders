@@ -95,9 +95,31 @@ async def ai_generate(request):
     data = await request.json()
     prompt = data.get("prompt")
     system_prompt = data.get("system", "You are a creative coding expert.")
-    api_url = data.get("api_url", "http://localhost:11434/v1/chat/completions") # Default to local Ollama
+    api_url = data.get("api_url", "http://localhost:11434/v1/chat/completions")
     model = data.get("model", "llama3")
     
+    # Try to find an API key for this URL
+    api_key = None
+    keys_dir = os.path.join(os.path.dirname(BASE_DIR), "api_keys")
+    if os.path.exists(keys_dir):
+        # Clean URL for filename: http://localhost:11434/v1 -> http:__localhost:11434_v1.txt
+        # Or just use domain if possible. Let's try matching the hostname.
+        from urllib.parse import urlparse
+        hostname = urlparse(api_url).hostname
+        
+        possible_files = [
+            f"{hostname}.txt", 
+            api_url.replace("/", "_").replace(":", "_") + ".txt",
+            hostname.replace(".", "_") + ".txt"
+        ]
+        
+        for pf in possible_files:
+            kp = os.path.join(keys_dir, pf)
+            if os.path.exists(kp):
+                with open(kp, "r") as f:
+                    api_key = f.read().strip()
+                break
+
     payload = {
         "model": model,
         "messages": [
@@ -107,15 +129,18 @@ async def ai_generate(request):
         "temperature": 0.7
     }
     
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(api_url, json=payload) as resp:
+            async with session.post(api_url, json=payload, headers=headers) as resp:
                 if resp.status != 200:
                     err_text = await resp.text()
                     return web.Response(status=resp.status, text=f"AI API Error: {err_text}")
                 
                 result = await resp.json()
-                # Handle standard OpenAI response format
                 content = result["choices"][0]["message"]["content"]
                 return web.json_response({"content": content})
     except Exception as e:

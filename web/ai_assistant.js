@@ -5,7 +5,7 @@ export class AIAssistant {
         this.model = localStorage.getItem("scromfy_ai_model") || "llama3";
     }
 
-    async generate(prompt, currentCode, type = "glsl") {
+    async generate(prompt, currentCode, type = "glsl", settings = null) {
         const systemPrompt = `You are a creative coding expert specializing in ${type.toUpperCase()}.
         If GLSL, follow Shadertoy conventions (mainImage, iTime, iResolution).
         Return ONLY the code block. No explanations.`;
@@ -14,14 +14,17 @@ export class AIAssistant {
             `Current code:\n\`\`\`${type}\n${currentCode}\n\`\`\`\n\nTask: ${prompt}` :
             prompt;
 
+        const url = settings?.api_url || this.apiUrl;
+        const model = settings?.model || this.model;
+
         const response = await fetch("/scromfy/ai/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 prompt: fullPrompt,
                 system: systemPrompt,
-                api_url: this.apiUrl,
-                model: this.model
+                api_url: url,
+                model: model
             })
         });
 

@@ -258,36 +258,40 @@ function setupRenderNode(node, nodeData) {
     };
 
     node.updatePreview = function () {
-        const code = this.getConnectedCode();
-        // console.debug(`[Scromfy] updatePreview triggered for ${nodeData.name}, code length:`, code?.length);
+        try {
+            const code = this.getConnectedCode();
+            console.log(`[Scromfy] updatePreview: node=${this.id}, code_len=${code?.length || 0}`);
 
-        if (!code) {
-            const isConnected = this.inputs?.some(i => i.link !== null);
-            messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
-            messageOverlay.style.display = "flex";
-            console.log(`[Scromfy] ${nodeData.name}: No code found, showing overlay.`);
-            return;
-        }
-
-        console.log(`[Scromfy] ${nodeData.name}: Code found (len: ${code.length}), updating...`);
-        messageOverlay.style.display = "none";
-        this.updateUniforms(code);
-
-        let u = {};
-        try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
-
-        if (isP5) {
-            if (!node.p5Runner) {
-                node.p5Runner = new P5Runner(previewContainer, 512, 512);
+            if (!code) {
+                const isConnected = this.inputs?.some(i => i.link !== null);
+                messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
+                messageOverlay.style.display = "flex";
+                return;
             }
-            node.p5Runner.run(code, u);
-        } else {
-            if (!node.glslRunner) {
-                // Remove any existing canvases before creating a new runner to avoid stacking
-                previewContainer.querySelectorAll("canvas").forEach(c => c.remove());
-                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+
+            messageOverlay.style.display = "none";
+            this.updateUniforms(code);
+
+            let u = {};
+            try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
+
+            if (isP5) {
+                if (!node.p5Runner) {
+                    console.log("[Scromfy] Creating new P5Runner");
+                    node.p5Runner = new P5Runner(previewContainer, 512, 512);
+                }
+                node.p5Runner.run(code, u);
+            } else {
+                if (!node.glslRunner) {
+                    console.log("[Scromfy] Creating new GLSLRunner");
+                    previewContainer.querySelectorAll("canvas").forEach(c => c.remove());
+                    node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+                }
+                console.log("[Scromfy] Triggering GLSLRunner.run");
+                node.glslRunner.run(code, u);
             }
-            node.glslRunner.run(code, u);
+        } catch (err) {
+            console.error("[Scromfy] updatePreview Crash:", err);
         }
     };
 

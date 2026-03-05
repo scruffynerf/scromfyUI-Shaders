@@ -96,6 +96,11 @@ async def ai_generate(request):
     prompt = data.get("prompt")
     system_prompt = data.get("system", "You are a creative coding expert.")
     api_url = data.get("api_url", "http://localhost:11434/v1/chat/completions")
+    
+    # Robustify API URL
+    if api_url.count("/") < 3: # Only http://host:port/
+        api_url = api_url.rstrip("/") + "/v1/chat/completions"
+        
     model = data.get("model", "llama3")
     
     # Try to find an API key for this URL
@@ -141,7 +146,7 @@ async def ai_generate(request):
             async with session.post(api_url, json=payload, headers=headers) as resp:
                 if resp.status != 200:
                     err_text = await resp.text()
-                    return web.Response(status=resp.status, text=f"AI API Error: {err_text}")
+                    return web.Response(status=resp.status, text=f"AI API Error (URL: {api_url}): {err_text}")
                 
                 result = await resp.json()
                 # Handle standard OpenAI response format

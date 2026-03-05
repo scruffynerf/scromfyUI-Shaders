@@ -83,6 +83,10 @@ export class GLSLRunner {
             uniform vec3 iResolution;
             uniform vec3 u_resolution;
             uniform vec4 iMouse;
+            uniform sampler2D iChannel0;
+            uniform sampler2D iChannel1;
+            uniform sampler2D iChannel2;
+            uniform sampler2D iChannel3;
         `;
 
         let fullSource = resolvedSource;
@@ -239,5 +243,6 @@ export class GLSLRunner {
         }
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(this.render);
     }
 }

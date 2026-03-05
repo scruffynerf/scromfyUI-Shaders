@@ -41,7 +41,10 @@ export class P5Runner {
             }
 
             p.setup = () => {
-                p.createCanvas(this.width, this.height);
+                const canvas = p.createCanvas(this.width, this.height);
+                canvas.attribute('class', 'sc-preview-canvas');
+                // Ensure the canvas is at the bottom of the container, behind the overlay
+                canvas.parent(this.container);
             };
 
             try {
@@ -52,7 +55,9 @@ export class P5Runner {
                         if (typeof setup === 'function') {
                             const userSetup = setup;
                             p.setup = () => {
-                                p.createCanvas(${this.width}, ${this.height});
+                                const canvas = p.createCanvas(${this.width}, ${this.height});
+                                canvas.attribute('class', 'sc-preview-canvas');
+                                canvas.parent(p.canvas_parent);
                                 userSetup();
                             };
                         }
@@ -61,13 +66,14 @@ export class P5Runner {
                         }
                     }
                 `);
+                p.canvas_parent = this.container;
                 wrapper(p, uniforms);
             } catch (e) {
                 logger.error("P5 Evaluation Error:", e);
             }
         };
 
-        this.instance = new p5(sketch, this.container);
+        this.instance = new p5(sketch);
     }
 
     async bake(frameCount, onProgress) {

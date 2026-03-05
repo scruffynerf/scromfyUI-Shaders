@@ -58,9 +58,9 @@ export class GLSLRunner {
         const gl = this.gl;
         if (!gl) return;
 
-        console.log("[Scromfy] updateShader starting, length:", source.length);
+        console.debug("[Scromfy] updateShader starting, length:", source.length);
         const resolvedSource = await this.resolveIncludes(source);
-        console.log("[Scromfy] Includes resolved, final length:", resolvedSource.length);
+        console.debug("[Scromfy] Includes resolved, final length:", resolvedSource.length);
 
         const vert = `#version 300 es
             in vec2 pos;

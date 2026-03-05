@@ -25,7 +25,16 @@ class CreativeShaderRender:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Creative"
 
-    def render(self, shader_code, width, height, frames, fps, time_start, settings=None, channels=None, custom_uniforms="{}"):
+    def render(self, shader_code, **kwargs):
+        settings = kwargs.get("settings")
+        width = kwargs.get("width", 512)
+        height = kwargs.get("height", 512)
+        frames = kwargs.get("frames", 1)
+        fps = kwargs.get("fps", 24.0)
+        time_start = kwargs.get("time_start", 0.0)
+        channels = kwargs.get("channels")
+        custom_uniforms = kwargs.get("custom_uniforms", "{}")
+
         if settings:
             shader_code = settings.get("shader_code", shader_code)
             width = settings.get("width", width)

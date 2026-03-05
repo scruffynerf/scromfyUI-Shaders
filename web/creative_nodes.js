@@ -35,7 +35,6 @@ app.registerExtension({
             }
         };
 
-        // Add connection listeners for render nodes
         if (nodeData.name === "CreativeShaderRender" || nodeData.name === "CreativeP5Render") {
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
             nodeType.prototype.onConnectionsChange = function () {
@@ -75,7 +74,6 @@ function setupLoaderNode(node, nodeData) {
     let editor;
     createEditor(editorContainer, codeWidget.value, isP5 ? "javascript" : "glsl", (val) => {
         codeWidget.value = val;
-        // Notify any connected render nodes
         app.graph.setDirtyCanvas(true, true);
     }).then(ed => editor = ed);
 
@@ -121,8 +119,14 @@ function setupRenderNode(node, nodeData) {
     const root = document.createElement("div");
     root.className = "sc-node";
 
+    // Preview area with message overlay
     const previewContainer = document.createElement("div");
     previewContainer.className = "sc-preview-container";
+
+    const messageOverlay = document.createElement("div");
+    messageOverlay.style.cssText = "position: absolute; top:0; left:0; width:100%; height:100%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); color: #888; font-style: italic; z-index: 10; padding: 20px; text-align: center; pointer-events: none;";
+    messageOverlay.textContent = "Please connect a Loader...";
+    previewContainer.appendChild(messageOverlay);
     root.appendChild(previewContainer);
 
     const uniformGrid = document.createElement("div");
@@ -136,25 +140,13 @@ function setupRenderNode(node, nodeData) {
     uniformSection.appendChild(uniformGrid);
     root.appendChild(uniformSection);
 
-    let bakeBtn;
+    const toolSection = document.createElement("div");
+    toolSection.className = "sc-section";
     if (isP5) {
-        const p5ToolSection = document.createElement("div");
-        p5ToolSection.className = "sc-section";
-        bakeBtn = document.createElement("button");
+        const bakeBtn = document.createElement("button");
         bakeBtn.className = "sc-btn";
         bakeBtn.textContent = "Bake Animation";
-        p5ToolSection.appendChild(bakeBtn);
-
-        const refreshBtn = document.createElement("button");
-        refreshBtn.className = "sc-btn";
-        refreshBtn.style.marginLeft = "8px";
-        refreshBtn.textContent = "Refresh";
-        p5ToolSection.appendChild(refreshBtn);
-        refreshBtn.onclick = () => node.updatePreview();
-
-        root.appendChild(p5ToolSection);
-
-        node.p5Runner = new P5Runner(previewContainer, 512, 512);
+        toolSection.appendChild(bakeBtn);
 
         bakeBtn.onclick = async () => {
             const code = node.getConnectedCode();
@@ -174,45 +166,34 @@ function setupRenderNode(node, nodeData) {
             customUniformWidget.value = JSON.stringify(uniforms);
             bakeBtn.textContent = "Bake Animation";
         };
-    } else {
-        const glslToolSection = document.createElement("div");
-        glslToolSection.className = "sc-section";
-        const refreshBtn = document.createElement("button");
-        refreshBtn.className = "sc-btn";
-        refreshBtn.textContent = "Refresh Preview";
-        glslToolSection.appendChild(refreshBtn);
-        root.appendChild(glslToolSection);
-        refreshBtn.onclick = () => node.updatePreview();
 
+        node.p5Runner = new P5Runner(previewContainer, 512, 512);
+    } else {
         node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
     }
+
+    const refreshBtn = document.createElement("button");
+    refreshBtn.className = "sc-btn";
+    refreshBtn.style.marginLeft = "8px";
+    refreshBtn.textContent = "Refresh Preview";
+    refreshBtn.onclick = () => node.updatePreview();
+    toolSection.appendChild(refreshBtn);
+    root.appendChild(toolSection);
 
     node.addDOMWidget("creative_ui", "UI", root);
 
     node.getConnectedCode = function () {
         const inputName = isP5 ? "p5_code" : "shader_code";
         const input = this.inputs?.find(i => i.name === inputName);
-        console.log(`[Scromfy] getConnectedCode for ${nodeData.name}:`, { inputName, hasInput: !!input, link: input?.link });
-
         const linkId = input?.link;
         if (linkId !== null && linkId !== undefined) {
             const link = app.graph.links[linkId];
-            console.log(`[Scromfy] Link ${linkId}:`, link);
             if (link) {
                 const originNode = app.graph.getNodeById(link.origin_id);
-                console.log(`[Scromfy] Origin Node ${link.origin_id}:`, originNode?.type);
                 if (originNode) {
                     const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
-                    if (widget) {
-                        console.log(`[Scromfy] Found code widget on ${originNode.type}, length:`, widget.value?.length);
-                        return widget.value;
-                    }
-                    console.warn("[Scromfy] Origin node found but no code widget found:", originNode.type, originNode.widgets?.map(w => w.name));
-                } else {
-                    console.warn("[Scromfy] Origin node not found for link:", link.origin_id);
+                    return widget ? widget.value : "";
                 }
-            } else {
-                console.warn("[Scromfy] Link not found in app.graph.links:", linkId);
             }
         }
         return "";
@@ -220,50 +201,23 @@ function setupRenderNode(node, nodeData) {
 
     node.updatePreview = function () {
         const code = this.getConnectedCode();
-
-        // Handle Empty/Disconnected State
         if (!code) {
             const isConnected = this.inputs?.some(i => i.link !== null);
-            const msg = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
-
-            if (previewContainer.dataset.state !== "error_" + msg) {
-                console.log(`[Scromfy] Showing error: ${msg}`);
-                previewContainer.innerHTML = `<div style="color: #888; padding: 40px; text-align: center; font-style: italic;">${msg}</div>`;
-                previewContainer.dataset.state = "error_" + msg;
-                if (!isP5) node.glslRunner = null;
-            }
+            messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
+            messageOverlay.style.display = "flex";
             return;
         }
 
-        // Handle Active State
-        if (previewContainer.dataset.state?.startsWith("error")) {
-            console.log("[Scromfy] Clearing error state, initializing runner...");
-            previewContainer.innerHTML = "";
-            previewContainer.dataset.state = "active";
-            if (!isP5) {
-                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
-            }
-        }
-
+        messageOverlay.style.display = "none";
         this.updateUniforms(code);
 
         let u = {};
         try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
 
         if (isP5) {
-            if (node.p5Runner) {
-                console.log("[Scromfy] Running P5 Sketch");
-                node.p5Runner.run(code, u);
-            }
+            if (node.p5Runner) node.p5Runner.run(code, u);
         } else {
-            if (node.glslRunner) {
-                console.log("[Scromfy] Running GLSL Shader");
-                node.glslRunner.run(code, u);
-            } else {
-                console.log("[Scromfy] Re-initializing GLSLRunner");
-                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
-                node.glslRunner.run(code, u);
-            }
+            if (node.glslRunner) node.glslRunner.run(code, u);
         }
     };
 
@@ -278,20 +232,15 @@ function setupRenderNode(node, nodeData) {
             const ctrl = createUniformControl(def, currentUniforms[def.name], (val) => {
                 currentUniforms[def.name] = val;
                 customUniformWidget.value = JSON.stringify(currentUniforms);
-                // Trigger preview update
                 this.updatePreview();
             });
             uniformGrid.appendChild(ctrl);
         });
     };
 
-    // Poll for changes in source node's code
     let lastCode = "";
     const pollId = setInterval(() => {
-        if (!node.graph) {
-            clearInterval(pollId);
-            return;
-        }
+        // Persistent polling even if briefly detached
         const currentCode = node.getConnectedCode();
         if (currentCode !== lastCode) {
             lastCode = currentCode;
@@ -299,7 +248,6 @@ function setupRenderNode(node, nodeData) {
         }
     }, 250);
 
-    // Cleanup interval on node removed
     const onRemoved = node.onRemoved;
     node.onRemoved = function () {
         onRemoved?.apply(this, arguments);

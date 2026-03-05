@@ -26,7 +26,13 @@ class CreativeP5Render:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Creative"
 
-    def render(self, p5_code, width, height, frames, settings=None, custom_uniforms="{}"):
+    def render(self, p5_code, **kwargs):
+        settings = kwargs.get("settings")
+        width = kwargs.get("width", 512)
+        height = kwargs.get("height", 512)
+        frames = kwargs.get("frames", 1)
+        custom_uniforms = kwargs.get("custom_uniforms", "{}")
+
         if settings:
             width = settings.get("width", width)
             height = settings.get("height", height)

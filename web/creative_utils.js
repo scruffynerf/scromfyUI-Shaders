@@ -9,7 +9,7 @@ export const logger = {
 export function hideWidget(widget) {
     if (!widget) return;
     widget.hidden = true;
-    widget.type = "hidden";
+    // Don't change type, as it may break serialization/validation for INT types
     widget.computeSize = () => [0, 0];
     if (widget.inputEl) {
         widget.inputEl.style.display = "none";

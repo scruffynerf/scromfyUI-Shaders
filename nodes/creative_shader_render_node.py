@@ -6,7 +6,7 @@ class CreativeShaderRender:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "shader_code": ("STRING", {"default": DEFAULT_SHADER, "multiline": True}),
+                "shader_code": ("STRING", {"forceInput": True}),
                 "width": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 8}),
                 "height": ("INT", {"default": 512, "min": 64, "max": 4096, "step": 8}),
                 "frames": ("INT", {"default": 1, "min": 1, "max": 1000}),

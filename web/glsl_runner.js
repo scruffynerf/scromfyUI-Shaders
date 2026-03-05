@@ -20,7 +20,9 @@ export class GLSLRunner {
         this.lastSource = "";
 
         this.initGL();
-        this.animate();
+        // Start animation loop
+        this.render = this.render.bind(this);
+        requestAnimationFrame(this.render);
     }
 
     initGL() {
@@ -159,15 +161,17 @@ export class GLSLRunner {
         return s;
     }
 
-    animate() {
-        this.draw();
-        requestAnimationFrame(() => this.animate());
-    }
-
-    draw() {
-        if (!this.gl || !this.program) return;
+    render() {
+        if (!this.gl || !this.program) {
+            requestAnimationFrame(this.render);
+            return;
+        }
 
         const gl = this.gl;
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
         gl.useProgram(this.program);
 
         const time = (Date.now() - this.startTime) / 1000.0;

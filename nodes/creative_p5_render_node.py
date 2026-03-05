@@ -10,7 +10,7 @@ class CreativeP5Render:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "p5_code": ("STRING", {"default": "// p5.js code here", "multiline": True}),
+                "p5_code": ("STRING", {"forceInput": True}),
                 "width": ("INT", {"default": 512}),
                 "height": ("INT", {"default": 512}),
                 "frames": ("INT", {"default": 1}),

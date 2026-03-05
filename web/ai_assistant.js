@@ -6,7 +6,7 @@ export class AIAssistant {
     }
 
     async generate(prompt, currentCode, type = "glsl", settings = null) {
-        const systemPrompt = `You are a creative coding expert specializing in ${type.toUpperCase()}.
+        let systemPrompt = settings?.system_prompt || `You are a creative coding expert specializing in ${type.toUpperCase()}.
         If GLSL, follow Shadertoy conventions (mainImage, iTime, iResolution).
         Return ONLY the code block. No explanations.`;
 

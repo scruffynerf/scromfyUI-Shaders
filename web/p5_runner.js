@@ -25,14 +25,28 @@ export class P5Runner {
     }
 
     async run(code, uniforms = {}) {
+        const uniformsStr = JSON.stringify(uniforms);
+
+        // If code hasn't changed, just update uniforms on the existing instance
+        if (this.instance && code === this.lastCode) {
+            if (uniformsStr === this.lastUniforms) {
+                return { success: true };
+            }
+            // Hot update uniforms
+            for (const [k, v] of Object.entries(uniforms)) {
+                this.instance[k] = v;
+            }
+            this.lastUniforms = uniformsStr;
+            return { success: true };
+        }
+
         if (this.instance) {
             this.instance.remove();
         }
 
+        this.lastCode = code;
+        this.lastUniforms = uniformsStr;
         const transpiled = transpileP5(code);
-
-        // Setup the global scope for the sketch to access uniforms
-        window._scromfyUniforms = uniforms;
 
         let compileError = null;
 
@@ -45,7 +59,6 @@ export class P5Runner {
             p.setup = () => {
                 const canvas = p.createCanvas(this.width, this.height);
                 canvas.attribute('class', 'sc-preview-canvas');
-                // Ensure the canvas is at the bottom of the container, behind the overlay
                 canvas.parent(this.container);
             };
 

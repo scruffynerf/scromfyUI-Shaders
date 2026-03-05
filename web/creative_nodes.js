@@ -197,17 +197,22 @@ function setupLoaderNode(node, nodeData) {
         }
 
         // Try to get AI settings from connected node
-        let settings = null;
+        let settings = { max_retries: 1 };
         const aiSlot = node.findInputSlot("ai_settings");
         if (aiSlot !== -1) {
             const aiNode = node.getInputNode(aiSlot);
             if (aiNode) {
-                // Pull widgets from the config node
                 const urlW = aiNode.widgets?.find(w => w.name === "api_url");
                 const modelW = aiNode.widgets?.find(w => w.name === "model");
-                if (urlW && modelW) {
-                    settings = { api_url: urlW.value, model: modelW.value };
-                }
+                const retryW = aiNode.widgets?.find(w => w.name === "max_retries");
+                const systemW = aiNode.widgets?.find(w => w.name === "system_prompt");
+
+                settings = {
+                    api_url: urlW?.value,
+                    model: modelW?.value,
+                    max_retries: retryW ? parseInt(retryW.value) : 1,
+                    system_prompt: systemW?.value
+                };
             }
         }
 
@@ -221,23 +226,35 @@ function setupLoaderNode(node, nodeData) {
             if (editor) editor.setValue(finalCode);
             app.graph.setDirtyCanvas(true, true);
 
-            // Wait a moment for graph to propagate and let polling/manual trigger happen
-            setTimeout(async () => {
-                // Find any connected render nodes to check for errors
+            // Give it a moment to propagate, then check for errors and retry if needed
+            let attempts = 0;
+            const maxAttempts = settings.max_retries || 0;
+
+            async function checkAndFix(lastResultCode) {
                 const renderNodes = findConnectedRenderNodes(node);
                 for (const rn of renderNodes) {
                     const result = await rn.updatePreview();
-                    if (result && !result.success) {
-                        console.log("[Scromfy] AI code failed validation, attempting auto-fix...", result.error);
-                        aiBtn.textContent = "Auto-fixing...";
+                    if (result && !result.success && attempts < maxAttempts) {
+                        attempts++;
+                        console.log(`[Scromfy] AI code failed validation (Attempt ${attempts}/${maxAttempts}), retrying...`, result.error);
+                        aiBtn.textContent = `Retrying (${attempts}/${maxAttempts})...`;
+
                         const fixPrompt = `The code you just generated failed with the following error:\n\n${result.error}\n\nPlease fix the code to resolve this error while keeping the original functionality: ${prompt}`;
-                        const fixedCode = await window.scromfyAI.generate(fixPrompt, finalCode, isP5 ? "js" : "glsl", settings);
+                        const fixedCode = await window.scromfyAI.generate(fixPrompt, lastResultCode, isP5 ? "js" : "glsl", settings);
+
                         codeWidget.value = fixedCode;
                         if (editor) editor.setValue(fixedCode);
                         app.graph.setDirtyCanvas(true, true);
-                        break;
+
+                        // Recurse to check the fixed code
+                        await new Promise(r => setTimeout(r, 500));
+                        return await checkAndFix(fixedCode);
                     }
                 }
+            }
+
+            setTimeout(async () => {
+                await checkAndFix(finalCode);
                 aiBtn.textContent = "Generate Code";
                 aiBtn.disabled = false;
                 aiQuery.value = "";
@@ -355,13 +372,21 @@ function setupRenderNode(node, nodeData) {
     node.updatePreview = async function () {
         try {
             const code = this.getConnectedCode();
+            const u = this.getConnectedUniforms();
+            const uStr = JSON.stringify(u);
+
+            if (code === this._lastCode && uStr === this._lastUniforms) {
+                return { success: true };
+            }
+
             if (!code) {
                 messageOverlay.style.display = "flex";
                 return { success: false, error: "No code" };
             }
             messageOverlay.style.display = "none";
 
-            const u = this.getConnectedUniforms();
+            this._lastCode = code;
+            this._lastUniforms = uStr;
 
             // Mark as needing bake if code changed
             if (isP5 && code !== node._lastBakedCode) {

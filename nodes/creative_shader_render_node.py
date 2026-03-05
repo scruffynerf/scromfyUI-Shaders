@@ -16,6 +16,7 @@ class CreativeShaderRender:
             "optional": {
                 "settings": ("SCROMFY_SETTINGS",),
                 "channels": ("SCROMFY_CHANNELS",),
+                "uniforms": ("SCROMFY_UNIFORMS",),
                 "custom_uniforms": ("STRING", {"default": "{}"}),
             }
         }
@@ -33,6 +34,7 @@ class CreativeShaderRender:
         fps = kwargs.get("fps", 24.0)
         time_start = kwargs.get("time_start", 0.0)
         channels = kwargs.get("channels")
+        uniforms_input = kwargs.get("uniforms")
         custom_uniforms = kwargs.get("custom_uniforms", "{}")
 
         if settings:
@@ -47,9 +49,20 @@ class CreativeShaderRender:
         wrap = ch_data.get("texture_wrap", "repeat")
         filt = ch_data.get("texture_filter", "linear")
         
-        try: uniforms = json.loads(custom_uniforms)
-        except: uniforms = {}
-
+        # Merge uniforms from both inputs
+        try:
+            u = json.loads(custom_uniforms)
+        except:
+            u = {}
+        
+        if uniforms_input:
+            try:
+                # uniforms_input is passed as a JSON string from CreativeUniforms
+                u.update(json.loads(uniforms_input))
+            except:
+                pass
+        
+        uniforms = u
         gpu = get_creative_gpu()
         images = gpu.render(shader_code, width, height, frames, fps, time_start, uniforms, ch_data, wrap, filt)
         

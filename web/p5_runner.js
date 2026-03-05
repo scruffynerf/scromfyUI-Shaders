@@ -34,6 +34,8 @@ export class P5Runner {
         // Setup the global scope for the sketch to access uniforms
         window._scromfyUniforms = uniforms;
 
+        let compileError = null;
+
         const sketch = (p) => {
             // Inject uniforms as properties of p
             for (const [k, v] of Object.entries(uniforms)) {
@@ -51,18 +53,23 @@ export class P5Runner {
                 // Use with(p) to allow global-style p5 code in instance mode
                 const wrapper = new Function('p', 'uniforms', `
                     with(p) {
-                        ${transpiled}
-                        if (typeof setup === 'function') {
-                            const userSetup = setup;
-                            p.setup = () => {
-                                const canvas = p.createCanvas(${this.width}, ${this.height});
-                                canvas.attribute('class', 'sc-preview-canvas');
-                                canvas.parent(p.canvas_parent);
-                                userSetup();
-                            };
-                        }
-                        if (typeof draw === 'function') {
-                            p.draw = draw;
+                        try {
+                            ${transpiled}
+                            if (typeof setup === 'function') {
+                                const userSetup = setup;
+                                p.setup = () => {
+                                    const canvas = p.createCanvas(${this.width}, ${this.height});
+                                    canvas.attribute('class', 'sc-preview-canvas');
+                                    canvas.parent(p.canvas_parent);
+                                    userSetup();
+                                };
+                            }
+                            if (typeof draw === 'function') {
+                                p.draw = draw;
+                            }
+                        } catch (innerError) {
+                            p.scromfyError = innerError.message;
+                            throw innerError;
                         }
                     }
                 `);
@@ -70,10 +77,17 @@ export class P5Runner {
                 wrapper(p, uniforms);
             } catch (e) {
                 logger.error("P5 Evaluation Error:", e);
+                compileError = e.message;
             }
         };
 
-        this.instance = new p5(sketch, this.container);
+        try {
+            this.instance = new p5(sketch, this.container);
+            if (compileError) return { success: false, error: compileError };
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
     }
 
     async bake(frameCount, onProgress) {

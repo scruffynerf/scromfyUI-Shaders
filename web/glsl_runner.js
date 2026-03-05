@@ -42,27 +42,30 @@ export class GLSLRunner {
     }
 
     async run(code, uniforms = {}) {
-        if (!code) return;
+        if (!code) return { success: false, error: "No code" };
 
         const uniformsStr = JSON.stringify(uniforms);
         if (code === this.lastSource && uniformsStr === this.lastUniforms) {
-            // console.debug("[Scromfy] GLSLRunner: Skipping update, code and uniforms are identical.");
-            return;
+            return { success: true };
         }
 
         console.log(`[Scromfy] GLSLRunner: Running update. Code changed: ${code !== this.lastSource}, Uniforms changed: ${uniformsStr !== this.lastUniforms}`);
         this.uniforms = uniforms;
 
+        let result = { success: true };
         if (code !== this.lastSource) {
-            await this.updateShader(code);
-            this.lastSource = code;
+            result = await this.updateShader(code);
+            if (result.success) {
+                this.lastSource = code;
+            }
         }
         this.lastUniforms = uniformsStr;
+        return result;
     }
 
     async updateShader(source) {
         const gl = this.gl;
-        if (!gl) return;
+        if (!gl) return { success: false, error: "WebGL not supported" };
 
         console.debug("[Scromfy] updateShader starting, length:", source.length);
         const resolvedSource = await this.resolveIncludes(source);
@@ -117,13 +120,17 @@ export class GLSLRunner {
         }
 
         console.log("[Scromfy] Compiling shaders...");
-        const vs = this.compileShader(gl.VERTEX_SHADER, vert);
-        const fs = this.compileShader(gl.FRAGMENT_SHADER, fullSource);
+        const vsResult = this.compileShader(gl.VERTEX_SHADER, vert);
+        const fsResult = this.compileShader(gl.FRAGMENT_SHADER, fullSource);
 
-        if (!vs || !fs) {
-            console.error("[Scromfy] Shader compilation failed");
-            return;
+        if (!vsResult.success || !fsResult.success) {
+            const err = fsResult.error || vsResult.error;
+            console.error("[Scromfy] Shader compilation failed:", err);
+            return { success: false, error: err };
         }
+
+        const vs = vsResult.shader;
+        const fs = fsResult.shader;
 
         const prog = gl.createProgram();
         gl.attachShader(prog, vs);
@@ -131,13 +138,15 @@ export class GLSLRunner {
         gl.linkProgram(prog);
 
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-            console.error("[Scromfy] Shader Link Error:", gl.getProgramInfoLog(prog));
-            return;
+            const linkErr = gl.getProgramInfoLog(prog);
+            console.error("[Scromfy] Shader Link Error:", linkErr);
+            return { success: false, error: linkErr };
         }
 
         if (this.program) gl.deleteProgram(this.program);
         this.program = prog;
         console.log("[Scromfy] Shader program updated and active");
+        return { success: true };
     }
 
     async resolveIncludes(source, depth = 0) {
@@ -155,12 +164,13 @@ export class GLSLRunner {
         for (const m of matches) {
             try {
                 let fetchPath = m.path;
+                const prefix = "/extensions/scromfyUI-Shaders";
                 if (fetchPath.startsWith("lygia/")) {
-                    fetchPath = "./lygia/" + fetchPath.substring(6);
+                    fetchPath = `${prefix}/web/lygia/` + fetchPath.substring(6);
                 } else if (fetchPath.startsWith("lib/")) {
-                    fetchPath = "./lib/" + fetchPath.substring(4);
+                    fetchPath = `${prefix}/web/lib/` + fetchPath.substring(4);
                 } else if (fetchPath.startsWith(".lib/")) {
-                    fetchPath = "./lib/" + fetchPath.substring(5);
+                    fetchPath = `${prefix}/web/lib/` + fetchPath.substring(5);
                 } else {
                     continue;
                 }
@@ -185,12 +195,11 @@ export class GLSLRunner {
         gl.compileShader(s);
         if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
             const err = gl.getShaderInfoLog(s);
-            console.error("[Scromfy] Shader Compile Error:", err);
-            // logger.error("Shader Compile Error:", err); // Keep original logger if desired
+            // console.error("[Scromfy] Shader Compile Error:", err);
             gl.deleteShader(s);
-            return null;
+            return { success: false, error: err };
         }
-        return s;
+        return { success: true, shader: s };
     }
 
     render() {

@@ -17,6 +17,19 @@ app.registerExtension({
     async setup() {
         ensureStyle();
         window.scromfyAI = new AIAssistant();
+
+        // Add auto-bake interceptor
+        const orgQueuePrompt = app.queuePrompt;
+        app.queuePrompt = async function () {
+            const p5Renders = app.graph._nodes.filter(n => n.type === "CreativeP5Render");
+            for (const node of p5Renders) {
+                if (node.needsBake && node.needsBake()) {
+                    console.log(`[Scromfy] Auto-baking node ${node.id} before queue...`);
+                    await node.doBake();
+                }
+            }
+            return orgQueuePrompt.apply(app, arguments);
+        };
     },
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -32,6 +45,8 @@ app.registerExtension({
                 setupRenderNode(node, nodeData);
             } else if (nodeData.name === "CreativeGLSLLoader" || nodeData.name === "CreativeP5Loader") {
                 setupLoaderNode(node, nodeData);
+            } else if (nodeData.name === "CreativeUniforms") {
+                setupUniformsNode(node, nodeData);
             }
         };
 
@@ -44,6 +59,58 @@ app.registerExtension({
         }
     }
 });
+
+function setupUniformsNode(node, nodeData) {
+    const codeWidget = node.widgets.find(w => w.name === "shader_code");
+    const customUniformWidget = node.widgets.find(w => w.name === "custom_uniforms");
+
+    hideWidget(codeWidget);
+    hideWidget(customUniformWidget);
+
+    const root = document.createElement("div");
+    root.className = "sc-node";
+
+    const uniformGrid = document.createElement("div");
+    uniformGrid.className = "sc-uniform-grid";
+    root.appendChild(uniformGrid);
+
+    node.addDOMWidget("creative_uniforms_ui", "UI", root);
+
+    node.updateUniforms = function (code) {
+        const defs = parseUniforms(code);
+        uniformGrid.innerHTML = "";
+
+        let currentUniforms = {};
+        try { currentUniforms = JSON.parse(customUniformWidget.value); } catch (e) { }
+
+        defs.forEach(def => {
+            const ctrl = createUniformControl(def, currentUniforms[def.name], (val) => {
+                currentUniforms[def.name] = val;
+                customUniformWidget.value = JSON.stringify(currentUniforms);
+                app.graph.setDirtyCanvas(true, true);
+            });
+            uniformGrid.appendChild(ctrl);
+        });
+    };
+
+    let lastCode = "";
+    const pollId = setInterval(() => {
+        if (!node.graph) return;
+        const inputSlot = node.findInputSlot("shader_code");
+        if (inputSlot === -1) return;
+        const origin = node.getInputNode(inputSlot);
+        if (origin) {
+            const widget = origin.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
+            const currentCode = widget ? widget.value : "";
+            if (currentCode !== lastCode) {
+                lastCode = currentCode;
+                node.updateUniforms(currentCode);
+            }
+        }
+    }, 500);
+
+    node.onRemoved = () => clearInterval(pollId);
+}
 
 function setupLoaderNode(node, nodeData) {
     const isP5 = nodeData.name === "CreativeP5Loader";
@@ -147,17 +214,60 @@ function setupLoaderNode(node, nodeData) {
         aiBtn.textContent = "Generating...";
         aiBtn.disabled = true;
         try {
-            const newCode = await window.scromfyAI.generate(prompt, codeWidget.value, isP5 ? "js" : "glsl", settings);
-            codeWidget.value = newCode;
-            if (editor) editor.setValue(newCode);
-            aiQuery.value = ""; // Clear query on success
+            let currentCode = codeWidget.value;
+            let finalCode = await window.scromfyAI.generate(prompt, currentCode, isP5 ? "js" : "glsl", settings);
+
+            codeWidget.value = finalCode;
+            if (editor) editor.setValue(finalCode);
             app.graph.setDirtyCanvas(true, true);
+
+            // Wait a moment for graph to propagate and let polling/manual trigger happen
+            setTimeout(async () => {
+                // Find any connected render nodes to check for errors
+                const renderNodes = findConnectedRenderNodes(node);
+                for (const rn of renderNodes) {
+                    const result = await rn.updatePreview();
+                    if (result && !result.success) {
+                        console.log("[Scromfy] AI code failed validation, attempting auto-fix...", result.error);
+                        aiBtn.textContent = "Auto-fixing...";
+                        const fixPrompt = `The code you just generated failed with the following error:\n\n${result.error}\n\nPlease fix the code to resolve this error while keeping the original functionality: ${prompt}`;
+                        const fixedCode = await window.scromfyAI.generate(fixPrompt, finalCode, isP5 ? "js" : "glsl", settings);
+                        codeWidget.value = fixedCode;
+                        if (editor) editor.setValue(fixedCode);
+                        app.graph.setDirtyCanvas(true, true);
+                        break;
+                    }
+                }
+                aiBtn.textContent = "Generate Code";
+                aiBtn.disabled = false;
+                aiQuery.value = "";
+            }, 500);
+
         } catch (e) {
             alert("AI Error: " + e.message);
+            aiBtn.textContent = "Generate Code";
+            aiBtn.disabled = false;
         }
-        aiBtn.textContent = "Generate Code";
-        aiBtn.disabled = false;
     };
+}
+
+function findConnectedRenderNodes(loaderNode) {
+    const renders = [];
+    const outputs = loaderNode.outputs;
+    if (!outputs) return renders;
+
+    for (const output of outputs) {
+        if (!output.links) continue;
+        for (const linkId of output.links) {
+            const link = app.graph.links[linkId];
+            if (!link) continue;
+            const targetNode = app.graph.getNodeById(link.target_id);
+            if (targetNode && (targetNode.type === "CreativeShaderRender" || targetNode.type === "CreativeP5Render")) {
+                renders.push(targetNode);
+            }
+        }
+    }
+    return renders;
 }
 
 function setupRenderNode(node, nodeData) {
@@ -179,52 +289,11 @@ function setupRenderNode(node, nodeData) {
     previewContainer.appendChild(messageOverlay);
     root.appendChild(previewContainer);
 
-    const uniformGrid = document.createElement("div");
-    uniformGrid.className = "sc-uniform-grid";
-    const uniformSection = document.createElement("div");
-    uniformSection.className = "sc-section";
-    const uniformTitle = document.createElement("div");
-    uniformTitle.className = "sc-title";
-    uniformTitle.textContent = "Dynamic Uniforms";
-    uniformSection.appendChild(uniformTitle);
-    uniformSection.appendChild(uniformGrid);
-    root.appendChild(uniformSection);
-
     const toolSection = document.createElement("div");
     toolSection.className = "sc-section";
-    if (isP5) {
-        const bakeBtn = document.createElement("button");
-        bakeBtn.className = "sc-btn";
-        bakeBtn.textContent = "Bake Animation";
-        toolSection.appendChild(bakeBtn);
-
-        bakeBtn.onclick = async () => {
-            const code = node.getConnectedCode();
-            if (!code) {
-                alert("Please connect a P5 Loader first.");
-                return;
-            }
-            const frames = node.widgets.find(w => w.name === "frames")?.value || 1;
-            bakeBtn.textContent = "Baking...";
-            const cacheId = await node.p5Runner.bake(frames, (p) => {
-                bakeBtn.textContent = `Baking ${Math.round(p * 100)}%`;
-            });
-
-            let uniforms = {};
-            try { uniforms = JSON.parse(customUniformWidget.value); } catch (e) { }
-            uniforms._p5_uid = cacheId;
-            customUniformWidget.value = JSON.stringify(uniforms);
-            bakeBtn.textContent = "Bake Animation";
-        };
-
-        node.p5Runner = new P5Runner(previewContainer, 512, 512);
-    } else {
-        node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
-    }
 
     const refreshBtn = document.createElement("button");
     refreshBtn.className = "sc-btn";
-    refreshBtn.style.marginLeft = "8px";
     refreshBtn.textContent = "Refresh Preview";
     refreshBtn.onclick = () => node.updatePreview();
     toolSection.appendChild(refreshBtn);
@@ -232,103 +301,96 @@ function setupRenderNode(node, nodeData) {
 
     node.addDOMWidget("creative_ui", "UI", root);
 
+    if (isP5) {
+        node.p5Runner = new P5Runner(previewContainer, 512, 512);
+
+        node.needsBake = function () {
+            let u = {};
+            const cuv = node.widgets.find(w => w.name === "custom_uniforms");
+            try { u = JSON.parse(cuv.value); } catch (e) { }
+            return !u || !u._p5_uid;
+        };
+
+        node.doBake = async function () {
+            const code = node.getConnectedCode();
+            if (!code) return;
+            const frames = node.widgets.find(w => w.name === "frames")?.value || 1;
+            const cacheId = await node.p5Runner.bake(frames);
+            let uniforms = {};
+            try { uniforms = JSON.parse(customUniformWidget.value); } catch (e) { }
+            uniforms._p5_uid = cacheId;
+            customUniformWidget.value = JSON.stringify(uniforms);
+        };
+    } else {
+        node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+    }
+
     node.getConnectedCode = function () {
         const inputName = isP5 ? "p5_code" : "shader_code";
         const slot = this.findInputSlot(inputName);
-        if (slot === -1) {
-            // console.debug(`[Scromfy] Slot ${inputName} not found on node`);
-            return "";
-        }
-
+        if (slot === -1) return "";
         const originNode = this.getInputNode(slot);
         if (originNode) {
-            // Find the code widget by name
             const widget = originNode.widgets?.find(w => w.name === "shader_code" || w.name === "p5_code" || w.name === "code");
-            if (widget) {
-                return widget.value;
-            } else {
-                // Secondary check: if it's a simple string primitive, it might have a 'value' property or 'widgets[0]'
-                const fallbackWidget = originNode.widgets?.[0];
-                if (fallbackWidget && (fallbackWidget.name === "value" || fallbackWidget.type === "text" || fallbackWidget.type === "customtext")) {
-                    return fallbackWidget.value;
-                }
-            }
+            if (widget) return widget.value;
         }
         return "";
     };
 
-    node.updatePreview = function () {
+    node.getConnectedUniforms = function () {
+        // Try to get uniforms from connected CreativeUniforms node
+        const slot = this.findInputSlot("uniforms");
+        if (slot !== -1) {
+            const origin = this.getInputNode(slot);
+            if (origin && origin.type === "CreativeUniforms") {
+                const widget = origin.widgets?.find(w => w.name === "custom_uniforms");
+                if (widget) {
+                    try { return JSON.parse(widget.value); } catch (e) { }
+                }
+            }
+        }
+        return {};
+    };
+
+    node.updatePreview = async function () {
         try {
             const code = this.getConnectedCode();
-            console.log(`[Scromfy] updatePreview: node=${this.id}, code_len=${code?.length || 0}`);
-
             if (!code) {
-                const isConnected = this.inputs?.some(i => i.link !== null);
-                messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
                 messageOverlay.style.display = "flex";
-                return;
+                return { success: false, error: "No code" };
+            }
+            messageOverlay.style.display = "none";
+
+            const u = this.getConnectedUniforms();
+
+            // Mark as needing bake if code changed
+            if (isP5 && code !== node._lastBakedCode) {
+                let currU = {};
+                try { currU = JSON.parse(customUniformWidget.value); } catch (e) { }
+                delete currU._p5_uid;
+                customUniformWidget.value = JSON.stringify(currU);
+                node._lastBakedCode = code;
             }
 
-            messageOverlay.style.display = "none";
-            this.updateUniforms(code);
-
-            let u = {};
-            try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
-
             if (isP5) {
-                if (!node.p5Runner) {
-                    console.log("[Scromfy] Creating new P5Runner");
-                    node.p5Runner = new P5Runner(previewContainer, 512, 512);
-                }
-                node.p5Runner.run(code, u);
+                if (!node.p5Runner) node.p5Runner = new P5Runner(previewContainer, 512, 512);
+                return await node.p5Runner.run(code, u);
             } else {
                 if (!node.glslRunner) {
-                    console.log("[Scromfy] Creating new GLSLRunner");
                     previewContainer.querySelectorAll("canvas").forEach(c => c.remove());
                     node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
                 }
-                console.log("[Scromfy] Triggering GLSLRunner.run");
-                node.glslRunner.run(code, u);
+                return await node.glslRunner.run(code, u);
             }
         } catch (err) {
-            console.error("[Scromfy] updatePreview Crash:", err);
+            return { success: false, error: err.message };
         }
     };
 
-    node.updateUniforms = function (code) {
-        const defs = parseUniforms(code);
-        uniformGrid.innerHTML = "";
-
-        let currentUniforms = {};
-        try { currentUniforms = JSON.parse(customUniformWidget.value); } catch (e) { }
-
-        defs.forEach(def => {
-            const ctrl = createUniformControl(def, currentUniforms[def.name], (val) => {
-                currentUniforms[def.name] = val;
-                customUniformWidget.value = JSON.stringify(currentUniforms);
-                this.updatePreview();
-            });
-            uniformGrid.appendChild(ctrl);
-        });
-    };
-
-    let lastCode = "";
     const pollId = setInterval(() => {
-        if (!node.graph) return; // Keep interval alive but wait for graph
-
-        const currentCode = node.getConnectedCode();
-        if (currentCode !== lastCode) {
-            console.log(`[Scromfy] Poll detected code change for node ${node.id} (${nodeData.name})`);
-            lastCode = currentCode;
-            node.updatePreview();
-        }
-    }, 500); // 500ms is enough and safer
-
-    const onRemoved = node.onRemoved;
-    node.onRemoved = function () {
-        onRemoved?.apply(this, arguments);
-        clearInterval(pollId);
-    };
+        if (!node.graph) return;
+        node.updatePreview();
+    }, 500);
 
     node.updatePreview();
 }

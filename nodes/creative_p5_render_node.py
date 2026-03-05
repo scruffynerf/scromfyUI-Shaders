@@ -26,24 +26,45 @@ class CreativeP5Render:
     FUNCTION = "render"
     CATEGORY = "Scromfy/Shaders/Creative"
 
-    def render(self, p5_code, **kwargs):
-        settings = kwargs.get("settings")
+    def render(self, **kwargs):
+        p5_code = kwargs.get("p5_code", "")
+        uniforms_input = kwargs.get("uniforms")
+        custom_uniforms = kwargs.get("custom_uniforms", "{}")
+        settings = kwargs.get("settings", {})
+        
+        # Merge uniforms
+        try:
+            u = json.loads(custom_uniforms)
+        except:
+            u = {}
+            
+        if uniforms_input:
+            try:
+                u.update(json.loads(uniforms_input))
+            except:
+                pass
+        
+        uniforms = u
+            
+        frames = kwargs.get("frames", 1)
         width = kwargs.get("width", 512)
         height = kwargs.get("height", 512)
-        frames = kwargs.get("frames", 1)
-        custom_uniforms = kwargs.get("custom_uniforms", "{}")
 
         if settings:
             width = settings.get("width", width)
             height = settings.get("height", height)
             frames = settings.get("frames", frames)
         
-        try: uniforms = json.loads(custom_uniforms)
-        except: uniforms = {}
-        
+        # Validation for P5 bake
+        # If frames > 1 we definitely need a bake
+        if frames > 1 and not uniforms.get("_p5_uid"):
+            raise ValueError("P5 node requires 'Bake' before multi-frame render. Please refresh the page or wait for auto-bake if enabled.")
+
         cache_id = uniforms.get("_p5_uid")
         if not cache_id:
-            raise ValueError("P5 Render Error: No baked animation found. Please click 'Bake Animation' in the node UI.")
+            # For single frame, if not baked, we still need a p5_uid or it fails later
+            # But the user expected it to work. In the new workflow, auto-bake should have handled it.
+            raise ValueError("P5 Render Error: No baked animation found. Please ensure the node is connected and baked.")
         
         cache_dir = os.path.join(P5_CACHE_DIR, str(cache_id))
         if not os.path.exists(cache_dir):

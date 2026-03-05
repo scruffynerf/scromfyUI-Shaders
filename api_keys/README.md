@@ -5,10 +5,10 @@ To use the AI Assistant with external APIs (like OpenAI or Anthropic), you can s
 ### Instructions
 
 1. Create a new `.txt` file in this directory.
-2. Name the file after the **domain** or the **full URL** of the API (replace slashes with underscores or just use the domain).
+2. Name the file after the **domain** or **host_port** of the API.
    * Example for OpenAI: `api.openai.com.txt`
    * Example for Anthropic: `api.anthropic.com.txt`
-   * Example for a specific local URL: `http:__localhost:11434.txt`
+   * Example for a specific local URL: `localhost_11434.txt` (No `http://`, no colons).
 3. Paste the API key as the only content in the file.
 
 ### Security

@@ -265,9 +265,11 @@ function setupRenderNode(node, nodeData) {
             const isConnected = this.inputs?.some(i => i.link !== null);
             messageOverlay.textContent = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
             messageOverlay.style.display = "flex";
+            console.log(`[Scromfy] ${nodeData.name}: No code found, showing overlay.`);
             return;
         }
 
+        console.log(`[Scromfy] ${nodeData.name}: Code found (len: ${code.length}), updating...`);
         messageOverlay.style.display = "none";
         this.updateUniforms(code);
 
@@ -275,15 +277,17 @@ function setupRenderNode(node, nodeData) {
         try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
 
         if (isP5) {
-            if (node.p5Runner) node.p5Runner.run(code, u);
-        } else {
-            if (node.glslRunner) {
-                node.glslRunner.run(code, u);
-            } else {
-                console.log("[Scromfy] Initializing missing GLSLRunner");
-                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
-                node.glslRunner.run(code, u);
+            if (!node.p5Runner) {
+                node.p5Runner = new P5Runner(previewContainer, 512, 512);
             }
+            node.p5Runner.run(code, u);
+        } else {
+            if (!node.glslRunner) {
+                // Remove any existing canvases before creating a new runner to avoid stacking
+                previewContainer.querySelectorAll("canvas").forEach(c => c.remove());
+                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+            }
+            node.glslRunner.run(code, u);
         }
     };
 

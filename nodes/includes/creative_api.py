@@ -102,18 +102,21 @@ async def ai_generate(request):
     api_key = None
     keys_dir = os.path.join(os.path.dirname(BASE_DIR), "api_keys")
     if os.path.exists(keys_dir):
-        # Clean URL for filename: http://localhost:11434/v1 -> http:__localhost:11434_v1.txt
-        # Or just use domain if possible. Let's try matching the hostname.
         from urllib.parse import urlparse
-        hostname = urlparse(api_url).hostname
+        p = urlparse(api_url)
+        hostname = p.hostname or ""
+        host_port = f"{hostname}_{p.port}" if p.port else hostname
+        
+        # Cleaned version of full URL (no protocol, no colons)
+        url_clean = api_url.replace("https://", "").replace("http://", "").replace(":", "_").replace("/", "_")
         
         possible_files = [
             f"{hostname}.txt", 
-            api_url.replace("/", "_").replace(":", "_") + ".txt",
-            hostname.replace(".", "_") + ".txt"
+            f"{host_port}.txt",
+            f"{url_clean}.txt"
         ]
         
-        for pf in possible_files:
+        for pf in [f for f in possible_files if f != ".txt"]:
             kp = os.path.join(keys_dir, pf)
             if os.path.exists(kp):
                 with open(kp, "r") as f:
@@ -141,9 +144,22 @@ async def ai_generate(request):
                     return web.Response(status=resp.status, text=f"AI API Error: {err_text}")
                 
                 result = await resp.json()
-                content = result["choices"][0]["message"]["content"]
-                return web.json_response({"content": content})
+                # Handle standard OpenAI response format
+                if "choices" in result and len(result["choices"]) > 0:
+                    content = result["choices"][0]["message"]["content"]
+                    return web.json_response({"content": content})
+                # Handle Ollama /message format
+                elif "message" in result:
+                    content = result["message"]["content"]
+                    return web.json_response({"content": content})
+                # Handle simple /response format
+                elif "response" in result:
+                    return web.json_response({"content": result["response"]})
+                else:
+                    return web.Response(status=500, text=f"Unexpected AI response format: {json.dumps(result)}")
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return web.Response(status=500, text=f"Proxy Error: {str(e)}")
 
 @PromptServer.instance.routes.get("/scromfy/ai/models")

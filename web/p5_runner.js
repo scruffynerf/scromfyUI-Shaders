@@ -73,7 +73,7 @@ export class P5Runner {
             }
         };
 
-        this.instance = new p5(sketch);
+        this.instance = new p5(sketch, this.container);
     }
 
     async bake(frameCount, onProgress) {

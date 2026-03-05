@@ -43,15 +43,21 @@ export class GLSLRunner {
 
     async run(code, uniforms = {}) {
         if (!code) return;
-        if (code === this.lastSource && JSON.stringify(uniforms) === this.lastUniforms) return;
 
+        const uniformsStr = JSON.stringify(uniforms);
+        if (code === this.lastSource && uniformsStr === this.lastUniforms) {
+            // console.debug("[Scromfy] GLSLRunner: Skipping update, code and uniforms are identical.");
+            return;
+        }
+
+        console.log(`[Scromfy] GLSLRunner: Running update. Code changed: ${code !== this.lastSource}, Uniforms changed: ${uniformsStr !== this.lastUniforms}`);
         this.uniforms = uniforms;
 
         if (code !== this.lastSource) {
             await this.updateShader(code);
             this.lastSource = code;
         }
-        this.lastUniforms = JSON.stringify(uniforms);
+        this.lastUniforms = uniformsStr;
     }
 
     async updateShader(source) {

@@ -144,6 +144,14 @@ function setupRenderNode(node, nodeData) {
         bakeBtn.className = "sc-btn";
         bakeBtn.textContent = "Bake Animation";
         p5ToolSection.appendChild(bakeBtn);
+
+        const refreshBtn = document.createElement("button");
+        refreshBtn.className = "sc-btn";
+        refreshBtn.style.marginLeft = "8px";
+        refreshBtn.textContent = "Refresh";
+        p5ToolSection.appendChild(refreshBtn);
+        refreshBtn.onclick = () => node.updatePreview();
+
         root.appendChild(p5ToolSection);
 
         node.p5Runner = new P5Runner(previewContainer, 512, 512);
@@ -167,6 +175,15 @@ function setupRenderNode(node, nodeData) {
             bakeBtn.textContent = "Bake Animation";
         };
     } else {
+        const glslToolSection = document.createElement("div");
+        glslToolSection.className = "sc-section";
+        const refreshBtn = document.createElement("button");
+        refreshBtn.className = "sc-btn";
+        refreshBtn.textContent = "Refresh Preview";
+        glslToolSection.appendChild(refreshBtn);
+        root.appendChild(glslToolSection);
+        refreshBtn.onclick = () => node.updatePreview();
+
         node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
     }
 
@@ -203,19 +220,29 @@ function setupRenderNode(node, nodeData) {
 
     node.updatePreview = function () {
         const code = this.getConnectedCode();
+
+        // Handle Empty/Disconnected State
         if (!code) {
-            if (this.inputs?.some(i => i.link !== null)) {
-                previewContainer.innerHTML = "<div style='color: #884444; padding: 20px; text-align: center;'>Connection detected but no code found in source node.</div>";
-            } else {
-                previewContainer.innerHTML = "<div style='color: #666; padding: 20px; text-align: center;'>Please connect a Loader...</div>";
+            const isConnected = this.inputs?.some(i => i.link !== null);
+            const msg = isConnected ? "Connection detected but no code found in source node." : "Please connect a Loader...";
+
+            if (previewContainer.dataset.state !== "error_" + msg) {
+                console.log(`[Scromfy] Showing error: ${msg}`);
+                previewContainer.innerHTML = `<div style="color: #888; padding: 40px; text-align: center; font-style: italic;">${msg}</div>`;
+                previewContainer.dataset.state = "error_" + msg;
+                if (!isP5) node.glslRunner = null;
             }
             return;
         }
 
-        // Ensure runner is valid if we just connected
-        if (!isP5 && !node.glslRunner) {
+        // Handle Active State
+        if (previewContainer.dataset.state?.startsWith("error")) {
+            console.log("[Scromfy] Clearing error state, initializing runner...");
             previewContainer.innerHTML = "";
-            node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+            previewContainer.dataset.state = "active";
+            if (!isP5) {
+                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+            }
         }
 
         this.updateUniforms(code);
@@ -224,9 +251,19 @@ function setupRenderNode(node, nodeData) {
         try { u = JSON.parse(customUniformWidget.value); } catch (e) { }
 
         if (isP5) {
-            if (node.p5Runner) node.p5Runner.run(code, u);
+            if (node.p5Runner) {
+                console.log("[Scromfy] Running P5 Sketch");
+                node.p5Runner.run(code, u);
+            }
         } else {
-            if (node.glslRunner) node.glslRunner.run(code, u);
+            if (node.glslRunner) {
+                console.log("[Scromfy] Running GLSL Shader");
+                node.glslRunner.run(code, u);
+            } else {
+                console.log("[Scromfy] Re-initializing GLSLRunner");
+                node.glslRunner = new GLSLRunner(previewContainer, 512, 512);
+                node.glslRunner.run(code, u);
+            }
         }
     };
 

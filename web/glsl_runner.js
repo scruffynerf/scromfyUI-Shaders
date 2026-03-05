@@ -58,10 +58,10 @@ export class GLSLRunner {
         const gl = this.gl;
         if (!gl) return;
 
-        // Resolve includes before compiling
+        console.log("[Scromfy] updateShader starting, length:", source.length);
         const resolvedSource = await this.resolveIncludes(source);
+        console.log("[Scromfy] Includes resolved, final length:", resolvedSource.length);
 
-        // Minimal shadertoy-like wrapper
         const vert = `#version 300 es
             in vec2 pos;
             out vec2 uv;
@@ -80,21 +80,40 @@ export class GLSLRunner {
         `;
 
         let fullSource = resolvedSource;
-        if (gl instanceof WebGL2RenderingContext) {
-            if (!resolvedSource.includes("#version")) {
-                fullSource = "#version 300 es\nprecision highp float;\n" + preamble + resolvedSource;
+        const isWebGL2 = gl instanceof WebGL2RenderingContext;
+
+        if (isWebGL2) {
+            if (!fullSource.includes("#version")) {
+                fullSource = "#version 300 es\nprecision highp float;\n" + preamble + fullSource;
             } else {
-                // If it has mainImage but no main(), wrap it
-                if (resolvedSource.includes("void mainImage") && !resolvedSource.includes("void main()")) {
-                    fullSource += "\nout vec4 fragColor;\nvoid main() { mainImage(fragColor, gl_FragCoord.xy); }";
+                // If version is present, we need to inject preamble after it
+                const versionMatch = fullSource.match(/#version\s+\d+\s+es/);
+                if (versionMatch) {
+                    const end = versionMatch.index + versionMatch[0].length;
+                    fullSource = fullSource.substring(0, end) + "\nprecision highp float;\n" + preamble + fullSource.substring(end);
                 }
+            }
+
+            // Shadertoy compatibility
+            if (fullSource.includes("void mainImage") && !fullSource.includes("void main()")) {
+                console.log("[Scromfy] Wrapping mainImage into main()");
+                fullSource += "\nout vec4 fragColor;\nvoid main() { mainImage(fragColor, gl_FragCoord.xy); }";
+            }
+        } else {
+            // WebGL 1
+            if (!fullSource.includes("precision")) {
+                fullSource = "precision highp float;\n" + preamble + fullSource;
             }
         }
 
+        console.log("[Scromfy] Compiling shaders...");
         const vs = this.compileShader(gl.VERTEX_SHADER, vert);
         const fs = this.compileShader(gl.FRAGMENT_SHADER, fullSource);
 
-        if (!vs || !fs) return;
+        if (!vs || !fs) {
+            console.error("[Scromfy] Shader compilation failed");
+            return;
+        }
 
         const prog = gl.createProgram();
         gl.attachShader(prog, vs);
@@ -102,12 +121,13 @@ export class GLSLRunner {
         gl.linkProgram(prog);
 
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-            logger.error("Shader Link Error:", gl.getProgramInfoLog(prog));
+            console.error("[Scromfy] Shader Link Error:", gl.getProgramInfoLog(prog));
             return;
         }
 
         if (this.program) gl.deleteProgram(this.program);
         this.program = prog;
+        console.log("[Scromfy] Shader program updated and active");
     }
 
     async resolveIncludes(source, depth = 0) {
@@ -154,7 +174,9 @@ export class GLSLRunner {
         gl.shaderSource(s, src);
         gl.compileShader(s);
         if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-            logger.error("Shader Compile Error:", gl.getShaderInfoLog(s));
+            const err = gl.getShaderInfoLog(s);
+            console.error("[Scromfy] Shader Compile Error:", err);
+            // logger.error("Shader Compile Error:", err); // Keep original logger if desired
             gl.deleteShader(s);
             return null;
         }
@@ -179,7 +201,13 @@ export class GLSLRunner {
         if (timeLoc) gl.uniform1f(timeLoc, time);
 
         const resLoc = gl.getUniformLocation(this.program, "iResolution") || gl.getUniformLocation(this.program, "u_resolution");
-        if (resLoc) gl.uniform3f(resLoc, this.width, this.height, 1.0);
+        if (resLoc) {
+            try {
+                gl.uniform3f(resLoc, this.width, this.height, 1.0);
+            } catch (e) {
+                gl.uniform2f(resLoc, this.width, this.height);
+            }
+        }
 
         // Custom Uniforms
         if (this.uniforms) {
